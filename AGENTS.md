@@ -74,6 +74,8 @@ docs/              CAPTURE.md, API-NOTES.md, LOGIN-NOTES.md, 截图
   接口字段见 `docs/API-NOTES.md`。
 - 下一步：用户运行 `campusrun.cmd login --remember` 或 GUI 登录，报告是否需要短信/错误码；
   若真实 CAS 表单与 mock 有差异，按错误页面微调。
+- 交互约定：抓包备用方式默认隐藏；账号登录连续失败 2 次自动显示并提示抓包教程；
+  登录成功/退出后恢复隐藏（已有 cURL 连接时保持显示）。
 
 ## 5. 设计决策
 

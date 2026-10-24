@@ -1,4 +1,4 @@
-﻿# Capture the CampusRun window to a PNG for visual verification.
+# Capture the CampusRun window to a PNG for visual verification.
 # ASCII only. Usage: powershell -NoProfile -ExecutionPolicy Bypass -File tools\screenshot.ps1 -Out <png>
 param(
     [Parameter(Mandatory = $true)][string]$Out,
@@ -34,6 +34,9 @@ public class WinCap {
 
     [DllImport("user32.dll")]
     public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
     [DllImport("shcore.dll")]
     public static extern int SetProcessDpiAwareness(int value);
@@ -95,8 +98,9 @@ if ($hwnd -eq [IntPtr]::Zero) {
     exit 1
 }
 
+[WinCap]::ShowWindow($hwnd, 9) | Out-Null
 [WinCap]::SetForegroundWindow($hwnd) | Out-Null
-Start-Sleep -Milliseconds 400
+Start-Sleep -Milliseconds 500
 
 $rect = New-Object WinCap+RECT
 [WinCap]::GetWindowRect($hwnd, [ref]$rect) | Out-Null

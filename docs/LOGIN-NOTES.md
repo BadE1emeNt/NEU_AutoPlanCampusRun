@@ -85,7 +85,7 @@
 | `neu/sports.py` | 体育平台 AES/签名、学期/记录/用户信息、分页 |
 | `neu/store.py` | `sports_session.dat` / `credentials.dat`（DPAPI） |
 | `service.py` | 登录、刷新、token 过期自动重登、与规划缓存集成 |
-| `ui/connection.py` | “① 账号登录”卡片：学号/密码/记住密码/登录/退出/短信弹窗 |
+| `ui/connection.py` | “① 账号登录”卡片：学号/密码/记住密码/登录/退出/短信弹窗；抓包备用默认隐藏，连续失败 2 次显示并提示教程 |
 | `cli.py` | `login --remember`、`logout`、`fetch` 自动使用账号会话 |
 
 已用真实 HAR 验证：

@@ -91,7 +91,7 @@ class AppConfig:
     rest_weekdays: list[int] = field(default_factory=list)
     demo_mode: bool = True
     count_mode: str = "best_per_day"
-    auth_mode: str = "curl"
+    auth_mode: str = "password"
     remember_password: bool = False
     neu_username: str = ""
     window_geometry: str = ""
@@ -187,9 +187,9 @@ class AppConfig:
 
         geometry = str(raw.get("window_geometry") or "")
         last_page = str(raw.get("last_page") or "dashboard")
-        auth_mode = str(raw.get("auth_mode") or "curl")
+        auth_mode = str(raw.get("auth_mode") or "password")
         if auth_mode not in ("curl", "password"):
-            auth_mode = "curl"
+            auth_mode = "password"
         return cls(
             target_km=target,
             deadline=deadline,

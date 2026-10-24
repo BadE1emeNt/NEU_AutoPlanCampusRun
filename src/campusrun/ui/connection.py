@@ -37,7 +37,12 @@ class ConnectionPage(tk.Frame):
         self._payload = None
         self._mapping: FieldMapping | None = None
         self._busy = False
+        self._capture_visible = False
+        self._neu_failures = 0
         self._build()
+        self._hide_capture_section()
+        if self.app.service.has_connection:
+            self._reveal_capture_section()
         self._load_existing_mapping()
 
     # ------------------------------------------------------------------
@@ -225,9 +230,43 @@ class ConnectionPage(tk.Frame):
             justify="left",
             wraplength=980,
         ).pack(anchor="w", pady=(3, 0))
+        tk.Label(
+            card.body,
+            text="账号登录连续失败 2 次后，会自动显示抓包登录备用方式与教程。",
+            bg=CARD,
+            fg=FAINT,
+            font=font("tiny"),
+            anchor="w",
+            justify="left",
+            wraplength=980,
+        ).pack(anchor="w", pady=(2, 0))
+
+    def _hide_capture_section(self) -> None:
+        for widget in (
+            getattr(self, "capture_card", None),
+            getattr(self, "preview_card", None),
+            getattr(self, "mapping_card", None),
+            getattr(self, "footer_card", None),
+        ):
+            if widget is not None and widget.winfo_manager():
+                widget.pack_forget()
+        self._capture_visible = False
+
+    def _reveal_capture_section(self) -> None:
+        if self._capture_visible:
+            return
+        for widget, pady in (
+            (self.capture_card, 8),
+            (self.preview_card, 8),
+            (self.mapping_card, 8),
+            (self.footer_card, (4, 26)),
+        ):
+            widget.pack(fill="x", padx=30, pady=pady)
+        self._capture_visible = True
 
     def _build_capture(self, parent: tk.Misc) -> None:
         card = Card(parent, padding=18)
+        self.capture_card = card
         card.pack(fill="x", padx=30, pady=8)
         section_title(
             card.body,
@@ -280,6 +319,7 @@ class ConnectionPage(tk.Frame):
 
     def _build_preview(self, parent: tk.Misc) -> None:
         card = Card(parent, padding=18)
+        self.preview_card = card
         card.pack(fill="x", padx=30, pady=8)
         section_title(
             card.body,
@@ -322,6 +362,7 @@ class ConnectionPage(tk.Frame):
 
     def _build_mapping(self, parent: tk.Misc) -> None:
         card = Card(parent, padding=18)
+        self.mapping_card = card
         card.pack(fill="x", padx=30, pady=8)
         section_title(
             card.body,
@@ -416,6 +457,7 @@ class ConnectionPage(tk.Frame):
 
     def _build_footer(self, parent: tk.Misc) -> None:
         frame = tk.Frame(parent, bg=BG)
+        self.footer_card = frame
         frame.pack(fill="x", padx=30, pady=(4, 26))
         tk.Label(
             frame,
@@ -483,6 +525,8 @@ class ConnectionPage(tk.Frame):
         self.clear_conn_btn.configure(state="normal" if service.has_connection else "disabled")
         self.save_btn.configure(state="normal" if (self._request and self._payload) else "disabled")
         self._refresh_neu_status()
+        if service.has_connection and not self._capture_visible:
+            self._reveal_capture_section()
 
     def _refresh_neu_status(self) -> None:
         service = self.app.service
@@ -542,6 +586,9 @@ class ConnectionPage(tk.Frame):
 
     def _neu_login_ok(self, summary) -> None:
         self._neu_busy(False)
+        self._neu_failures = 0
+        if not self.app.service.has_connection:
+            self._hide_capture_section()
         self.neu_pass_var.set("")
         self.app.plan = self.app.service.plan()
         self.app.refresh_views()
@@ -555,7 +602,18 @@ class ConnectionPage(tk.Frame):
 
     def _neu_login_error(self, exc: Exception) -> None:
         self._neu_busy(False)
+        self._neu_failures += 1
         self.neu_status.configure(text=f"登录失败：{exc}", fg=DANGER)
+        if self._neu_failures >= 2 and not self._capture_visible:
+            self._reveal_capture_section()
+            open_tutorial = messagebox.askyesno(
+                "账号登录连续失败",
+                f"{exc}\n\n账号登录连续失败 2 次，已显示抓包登录备用方式。\n是否打开抓包教程？",
+                parent=self.app,
+            )
+            if open_tutorial:
+                self.app.show_page("help")
+            return
         self.app.show_error("登录失败", str(exc))
 
     def _neu_busy(self, busy: bool) -> None:
@@ -576,6 +634,10 @@ class ConnectionPage(tk.Frame):
         self.app.service.clear_neu_login(clear_credentials=True)
         self.app.service.set_demo_mode(True)
         self._neu_busy(False)
+        self._neu_failures = 0
+        self._hide_capture_section()
+        if self.app.service.has_connection:
+            self._reveal_capture_section()
         self.neu_pass_var.set("")
         self.app.plan = self.app.service.plan()
         self.app.refresh_views()
