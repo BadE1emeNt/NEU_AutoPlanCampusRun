@@ -243,6 +243,20 @@ class CasLoginClient:
         self._public_key: str | None = None
         self._login_html = ""
         self._login_response_url = ""
+        self.trace: list[str] = []
+
+    def _record(self, text: str) -> None:
+        self.trace.append(text)
+        if len(self.trace) > 20:
+            del self.trace[:-20]
+
+    def _trace_suffix(self) -> str:
+        if not self.trace:
+            return ""
+        return "\n\n登录跳转链（ticket/token 已隐藏）：\n" + "\n".join(self.trace[-10:])
+
+    def _error(self, message: str) -> CasLoginError:
+        return CasLoginError(message + self._trace_suffix())
 
     # ------------------------------------------------------------------
     def _login_url(self) -> str:
@@ -289,7 +303,9 @@ class CasLoginClient:
     ) -> CasLoginResult:
         if not username or not password:
             raise CasLoginError("账号和密码不能为空。")
+        self.trace.clear()
         action_url, fields = self._login_page()
+        self._record("GET 登录页 200")
         public_key = self._fetch_public_key()
         try:
             encrypted = rsa_encrypt_base64(username + password, public_key)
@@ -318,16 +334,21 @@ class CasLoginClient:
                 "Content-Type": "application/x-www-form-urlencoded",
             },
         )
+        self._record(
+            f"POST CAS 登录 -> {response.status}"
+            + (f" Location {_redact_url(response.header('location') or '')}" if response.header("location") else "")
+        )
 
         if response.status in (301, 302, 303, 307, 308):
             location = response.header("location")
             if not location:
-                raise CasLoginError("登录成功但没有跳转地址。")
+                raise self._error("登录成功但没有跳转地址。")
             return self._follow_to_token(urllib.parse.urljoin(response.url, location))
 
         if response.status == 200:
             challenge = _parse_sms_challenge(response.text)
             if challenge is not None:
+                self._record("CAS 200 短信二次认证")
                 if sms_provider is None:
                     raise SmsRequired(challenge)
                 return self._complete_sms(
@@ -340,10 +361,11 @@ class CasLoginClient:
             message = _parse_login_error(response.text)
             if not message and self.browser.has_cookie("CASTGC"):
                 # 少数情况下 CAS 返回 200 + 页面内 JS 跳转，但 CASTGC 已下发
+                self._record("CAS 200，CASTGC 已下发，继续走服务")
                 return self._follow_to_token(self.service_url)
-            raise CasLoginError(message or "登录失败：账号或密码错误，或需要短信二次认证。")
+            raise self._error(message or "登录失败：账号或密码错误，或需要短信二次认证。")
 
-        raise CasLoginError(f"登录请求返回 HTTP {response.status}")
+        raise self._error(f"登录请求返回 HTTP {response.status}")
 
     # ------------------------------------------------------------------
     def _complete_sms(
@@ -415,14 +437,23 @@ class CasLoginClient:
     def _follow_to_token(self, location: str) -> CasLoginResult:
         current = location
         visited: set[str] = set()
+        self._record(f"START {_redact_url(current)}")
         for _ in range(10):
             token = _parse_sports_token(current)
-            if token:
-                return CasLoginResult(session=token, final_url=current)
+            if token is not None:
+                if token.is_complete():
+                    self._record(f"TOKEN 成功 uid={token.uid}（值已隐藏）")
+                    return CasLoginResult(session=token, final_url=current)
+                self._record("URL 含 token，但缺少 uid/学号等字段")
             if current in visited:
+                self._record("检测到跳转循环")
                 break
             visited.add(current)
             response = self.browser.get(current)
+            self._record(
+                f"GET {_redact_url(current)} -> {response.status}"
+                + (f" Location {_redact_url(response.header('location') or '')}" if response.header("location") else "")
+            )
             if response.status in (301, 302, 303, 307, 308):
                 next_location = response.header("location")
                 if not next_location:
@@ -432,14 +463,19 @@ class CasLoginClient:
             if response.status == 200:
                 # 某些 WebView 会在页面里用 JS 跳转，兜底从 HTML 找 token
                 token = _parse_sports_token(response.text)
-                if token:
+                if token is not None and token.is_complete():
+                    self._record("TOKEN 从页面内容解析成功")
                     return CasLoginResult(session=token, final_url=response.url)
                 message = _parse_login_error(response.text)
                 if message:
-                    raise CasLoginError(message)
-                raise CasLoginError("登录跳转后没有拿到体育平台 token，可能需要短信二次认证。")
-            raise CasLoginError(f"登录跳转返回 HTTP {response.status}")
-        raise CasLoginError("登录跳转次数过多，或没有拿到 token。")
+                    self._record(f"PAGE 错误：{message[:160]}")
+                    raise self._error(message)
+                self._record(f"PAGE {_page_hint(response.text)}")
+                raise self._error(
+                    "登录跳转后没有拿到体育平台 token；可能触发了短信二次认证或页面结构变化。"
+                )
+            raise self._error(f"登录跳转返回 HTTP {response.status}")
+        raise self._error("登录跳转次数过多，或没有拿到 token。")
 
 
 # ---------------------------------------------------------------------------
@@ -512,6 +548,44 @@ def _parse_sms_challenge(html: str) -> SmsChallenge | None:
     if match:
         return SmsChallenge(murmur=match.group(2), details=match.group(4), hint="请输入短信验证码")
     return None
+
+
+def _page_hint(html: str) -> str:
+    title_match = re.search(r"<title[^>]*>(.*?)</title>", html, re.S | re.I)
+    title = re.sub(r"\s+", " ", title_match.group(1)).strip() if title_match else ""
+    body = re.sub(r"(?is)<(script|style|noscript)[^>]*>.*?</\1>", " ", html)
+    body = re.sub(r"(?s)<[^>]+>", " ", body)
+    body = re.sub(r"\s+", " ", body).strip()
+    body = re.sub(
+        r"(?i)\b(ticket|token|code|session|student_num|card_id|uid|account)=([^\s&]+)",
+        r"\1=<hidden>",
+        body,
+    )
+    text = (title + " | " if title else "") + body[:180]
+    return text
+
+
+def _redact_url(value: str) -> str:
+    if not value:
+        return ""
+    sensitive = {"ticket", "token", "code", "session", "student_num", "card_id", "uid", "account"}
+    try:
+        parts = urllib.parse.urlsplit(value)
+        query = []
+        for key, item in urllib.parse.parse_qsl(parts.query, keep_blank_values=True):
+            query.append((key, "<hidden>" if key.lower() in sensitive else item))
+        fragment = parts.fragment
+        fragment = re.sub(
+            r"(?i)\b(ticket|token|code|session|student_num|card_id|uid|account)=([^&]+)",
+            r"\1=<hidden>",
+            fragment,
+        )
+        redacted = urllib.parse.urlunsplit(
+            (parts.scheme, parts.netloc, parts.path, urllib.parse.urlencode(query), fragment)
+        )
+        return redacted[:260]
+    except ValueError:
+        return value[:260]
 
 
 def _parse_sports_token(value: str) -> SportsSession | None:
