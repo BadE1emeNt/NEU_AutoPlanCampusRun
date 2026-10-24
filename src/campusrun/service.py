@@ -234,6 +234,24 @@ class CampusRunService:
         LOG.info("校园乐跑登录成功：%.1f km / %d 次", fetch.summary.completed_km, fetch.summary.completed_runs)
         return fetch.summary
 
+    def test_login_neu(
+        self,
+        username: str,
+        password: str,
+        sms_provider: Callable[[SmsChallenge], str] | None = None,
+    ) -> RunSummary:
+        """只验证账号密码/接口，不保存密码、token、配置或缓存。"""
+
+        username = username.strip()
+        if not username:
+            raise ProviderError("请输入学号。")
+        if not password:
+            raise ProviderError("测试登录需要输入密码。")
+        result = CasLoginClient().login(username, password, sms_provider=sms_provider)
+        fetch = SportsClient(result.session).fetch()
+        LOG.info("测试登录成功（未保存）：%.1f km / %d 次", fetch.summary.completed_km, fetch.summary.completed_runs)
+        return fetch.summary
+
     def clear_neu_login(self, clear_credentials: bool = True) -> None:
         self._neu_store.clear_session()
         if clear_credentials:

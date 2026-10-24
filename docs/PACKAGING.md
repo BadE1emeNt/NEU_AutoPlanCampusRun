@@ -93,7 +93,7 @@ py -3 -m venv .venv-build
 ## 3. 发布检查清单
 
 - [ ] 版本号统一：`campusrun.__version__`、README、EXE/APK version；
-- [ ] 76 个测试通过 + GUI 冒烟；
+- [ ] 77 个测试通过 + GUI 冒烟；
 - [ ] 真实账号登录回归（含首次绑定邮箱跳过）；
 - [ ] 不含 `research/`、HAR、token、密码、个人数据；
 - [ ] README（发行版）与 README.dev.md 链接正确；

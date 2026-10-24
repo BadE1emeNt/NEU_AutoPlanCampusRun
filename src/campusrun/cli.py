@@ -105,6 +105,11 @@ def build_parser() -> argparse.ArgumentParser:
     login = sub.add_parser("login", help="用学号/密码登录学校统一身份认证")
     login.add_argument("--user", help="学号（不填则交互输入）")
     login.add_argument("--remember", action="store_true", help="用 DPAPI 保存密码，便于会话过期后自动重登")
+    login.add_argument(
+        "--no-save",
+        action="store_true",
+        help="只测试登录并读取一次，不保存密码/token/配置/缓存",
+    )
 
     sub.add_parser("logout", help="清除本机保存的体育平台会话与密码")
 
@@ -280,13 +285,22 @@ def _cmd_login(service: CampusRunService, args: argparse.Namespace) -> int:
     if not password and not service.has_saved_credentials:
         print("密码不能为空。", file=sys.stderr)
         return 2
+    if args.no_save and args.remember:
+        print("已指定 --no-save：本次不会保存密码或 token，--remember 被忽略。", file=sys.stderr)
     try:
-        summary = service.login_neu(
-            username,
-            password,
-            remember_password=bool(args.remember),
-            sms_provider=_cli_sms,
-        )
+        if args.no_save:
+            summary = service.test_login_neu(
+                username,
+                password,
+                sms_provider=_cli_sms,
+            )
+        else:
+            summary = service.login_neu(
+                username,
+                password,
+                remember_password=bool(args.remember),
+                sms_provider=_cli_sms,
+            )
     except CasGuideRequired as exc:
         print(
             "\n需要先在浏览器完成一次首次登录引导。\n"
@@ -304,6 +318,12 @@ def _cmd_login(service: CampusRunService, args: argparse.Namespace) -> int:
         except Exception:
             pass
         return 2
+    if args.no_save:
+        print(
+            f"测试登录成功：{summary.completed_runs} 次有效记录，共 {summary.completed_km:.2f} km。\n"
+            "未保存密码、token、配置或缓存。"
+        )
+        return 0
     print(
         f"登录成功：{summary.completed_runs} 次有效记录，共 {summary.completed_km:.2f} km。"
     )

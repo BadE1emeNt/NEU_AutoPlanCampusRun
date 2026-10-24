@@ -335,6 +335,50 @@ class ServiceLoginTests(unittest.TestCase):
             self.assertEqual(reloaded.sports_session.token, "persist-token")
             self.assertTrue(reloaded.has_saved_credentials)
 
+    def test_test_login_does_not_persist(self):
+        session = SportsSession(
+            token="transient-token",
+            uid="123",
+            school_id="833",
+            student_num="20260001",
+            card_id="20260001",
+        )
+        summary = RunSummary(
+            fetched_at=datetime.now(),
+            provider="测试体育平台",
+            records=[RunRecord(day=date(2026, 10, 19), distance_km=3.47, valid=True)],
+        )
+
+        class FakeCas:
+            def __init__(self):
+                pass
+
+            def login(self, username, password, sms_provider=None):
+                from campusrun.neu.cas import CasLoginResult
+
+                return CasLoginResult(session=session, final_url="http://test")
+
+        class FakeSports:
+            def __init__(self, sports_session):
+                self.session = sports_session
+
+            def fetch(self):
+                return SportsFetch(summary=summary, term_id="4771", term_name="测试学期")
+
+        with workspace_tmp() as tmp:
+            paths = AppPaths(tmp)
+            service = CampusRunService(paths)
+            with patch("campusrun.service.CasLoginClient", FakeCas), patch(
+                "campusrun.service.SportsClient", FakeSports
+            ):
+                result = service.test_login_neu("20260001", "pass")
+            self.assertAlmostEqual(result.completed_km, 3.47)
+            self.assertIsNone(service.sports_session)
+            self.assertIsNone(service.credentials)
+            self.assertFalse(paths.sports_session_file.exists())
+            self.assertFalse(paths.credentials_file.exists())
+            self.assertTrue(service.config.demo_mode)
+
 
 if __name__ == "__main__":
     unittest.main()

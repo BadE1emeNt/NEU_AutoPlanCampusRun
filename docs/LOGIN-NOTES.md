@@ -112,7 +112,13 @@ campusrun.cmd login --remember
 
 输入真实学号/密码；若弹短信就输入验证码。成功后 `campusrun.cmd plan` 会使用真实数据。
 失败时把**错误文本**（不要密码/token）反馈即可。若提示“首次登录引导”，
-按错误里的 `pass.neu.edu.cn/tp_tpass/h5?...` 地址用浏览器登录该账号并完成引导，再重试。
+按错误里的 `pass.neu.edu.cn/tp_tpass/h5?...` 地址用浏览器登录该账号并点“稍后绑定”，再重试。
+
+只测试、不保存密码/token/配置：
+
+```bat
+campusrun.cmd login --no-save
+```
 
 ## 6. 安全与合规
 
