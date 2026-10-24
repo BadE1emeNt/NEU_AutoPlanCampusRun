@@ -11,7 +11,7 @@
 ## 1. 项目状态
 
 - 账号密码登录、CAS/RSA、短信二次认证、体育平台 AES/签名 API、DPAPI 存储、GUI/CLI、规划算法均已实现。
-- **77 个测试全部通过**（含本地 mock CAS、体育平台加密接口、DPAPI、GUI 冒烟）。
+- **78 个测试全部通过**（含本地 mock CAS、体育平台加密接口、DPAPI、GUI 冒烟）。
 - 真实数据处理已验证：用用户 HAR 中的 token 调用体育平台 API 成功；用 CASTGC 重新走
   `neuLogin` 能拿到新 token。
 - **真实 CAS 密码 POST** 已用本地 mock 验证；第一个真实账号已成功登录，

@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 from datetime import date, datetime
 from pathlib import Path
+from unittest.mock import patch
 
 from . import workspace_tmp
 from campusrun.analysis import PlanSettings
@@ -158,6 +159,18 @@ class ServiceTests(unittest.TestCase):
             text = path.read_text(encoding="utf-8-sig")
             self.assertIn("日期", text)
             self.assertGreater(len(text.splitlines()), 2)
+
+    def test_cache_write_failure_is_non_fatal(self):
+        with workspace_tmp() as tmp:
+            service = CampusRunService(AppPaths(Path(tmp)))
+            assert service.summary is not None
+            with patch(
+                "campusrun.config.atomic_write_text",
+                side_effect=PermissionError("denied"),
+            ):
+                service._save_cache(service.summary)
+            self.assertIsNotNone(service.last_cache_error)
+            self.assertIn("denied", service.last_cache_error or "")
 
 
 if __name__ == "__main__":

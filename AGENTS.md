@@ -51,7 +51,7 @@ src/campusrun/
   providers/       MockProvider / HttpProvider / autodetect
   cli.py           plan / fetch / import-curl / config / doctor / gui
   ui/              theme, widgets, app, onboarding, dashboard, records, connection, help, plan_dialog
-tests/             77 个测试（analysis/curl/autodetect/config/DPAPI/http/neu/CAS/GUI e2e）
+tests/             78 个测试（analysis/curl/autodetect/config/DPAPI/http/neu/CAS/GUI e2e）
 tools/             ui_smoke.py, e2e_gui.py, e2e_cli.py, ui_preview.py, ui_plan_preview.py, screenshot.ps1
 docs/              CAPTURE.md, API-NOTES.md, LOGIN-NOTES.md, PACKAGING.md, 截图
 ```
@@ -62,7 +62,7 @@ docs/              CAPTURE.md, API-NOTES.md, LOGIN-NOTES.md, PACKAGING.md, 截�
 
 ## 4. 当前状态（2026-10-24 晚）
 
-- 核心算法、配置、DPAPI、cURL、自动识别、CLI、GUI 均完成；77 个测试通过。
+- 核心算法、配置、DPAPI、cURL、自动识别、CLI、GUI 均完成；78 个测试通过。
 - **账号登录已实现**：
   - CAS 登录页解析 `lt/execution` + RSA(PKCS#1 v1.5) 加密 `学号+密码`；
   - 支持短信二次认证（`phone(...)` 挑战 → `tpass/device` 发送/校验，勾选信任设备）；

@@ -61,6 +61,7 @@ class CampusRunService:
         self.credentials: Credentials | None = None
         self.summary: RunSummary | None = None
         self.startup_warnings: list[str] = []
+        self.last_cache_error: str | None = None
         self._connection_store = ConnectionStore(self.paths)
         self._neu_store = NeuStore(self.paths)
         self._cache = SummaryCache(self.paths)
@@ -110,6 +111,16 @@ class CampusRunService:
         self.config.to_plan_settings()
         self.config.save(self.paths)
 
+    def _save_cache(self, summary: RunSummary) -> None:
+        """缓存是可选加速；写不进去不应该让整次刷新失败。"""
+
+        try:
+            self._cache.save(summary)
+            self.last_cache_error = None
+        except OSError as exc:
+            self.last_cache_error = str(exc)
+            LOG.warning("摘要缓存写入失败（本次数据仍然可用）：%s", exc)
+
     def update_config(self, **changes: Any) -> None:
         for key, value in changes.items():
             if not hasattr(self.config, key):
@@ -156,7 +167,7 @@ class CampusRunService:
         provider = HttpProvider(self.connection, count_mode=self.config.count_mode)
         summary = provider.fetch()
         self.summary = summary
-        self._cache.save(summary)
+        self._save_cache(summary)
         LOG.info("已刷新真实数据：%.1f km / %d 次", summary.completed_km, summary.completed_runs)
         return summary
 
@@ -184,7 +195,7 @@ class CampusRunService:
             )
             fetch = SportsClient(session).fetch()
         self.summary = fetch.summary
-        self._cache.save(fetch.summary)
+        self._save_cache(fetch.summary)
         self._neu_store.save_session(self.sports_session)
         LOG.info("已刷新校园乐跑：%.1f km / %d 次", fetch.summary.completed_km, fetch.summary.completed_runs)
         return fetch.summary
@@ -218,7 +229,7 @@ class CampusRunService:
         session = self._login_neu_session(username, password, sms_provider)
         fetch = SportsClient(session).fetch()
         self.summary = fetch.summary
-        self._cache.save(fetch.summary)
+        self._save_cache(fetch.summary)
         self._neu_store.save_session(self.sports_session or session)
         self.config.auth_mode = "password"
         self.config.demo_mode = False
@@ -326,7 +337,7 @@ class CampusRunService:
         """把刚由抓包响应解析出的汇总直接采用，避免再请求一次。"""
 
         self.summary = summary
-        self._cache.save(summary)
+        self._save_cache(summary)
         self.config.demo_mode = False
         self.save_config()
 
