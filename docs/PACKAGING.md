@@ -23,7 +23,8 @@
 - Tkinter/Tcl 由 PyInstaller hook 收集；不需要手工 `--add-data`；
 - DPAPI、`%APPDATA%\CampusRun`、网络请求在 EXE 下保持原行为；
 - 不打包 `research/`、`tests/`、抓包/令牌；
-- 产物：`dist/CampusRun/CampusRun.exe` + `_internal/`；zip 为 `dist/CampusRun-0.1.0-win64.zip`。
+- 产物：`dist/CampusRun/CampusRun.exe` + `_internal/`；zip 为
+  `dist/CampusRun-0.1.0-win64.zip`（含 README/LICENSE/DISCLAIMER/CAPTURE/截图）。
 
 ### EXE 验收
 
@@ -34,7 +35,7 @@
 - [x] 150% / 200% DPI 下界面不裁切（源码/EXE 同一 UI）；
 - [ ] 杀毒软件扫描无误报（至少记录结果）；
 - [ ] 卸载/删除数据目录行为明确；
-- [x] zip 内含 README（发行版）、截图、SHA256。
+- [x] zip 内含 README（发行版）、LICENSE、DISCLAIMER、截图、SHA256。
 
 ## 2. Android APK
 

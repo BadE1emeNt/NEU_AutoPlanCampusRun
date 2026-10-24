@@ -45,6 +45,8 @@ if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed" }
 
 $release = Join-Path $root "dist\CampusRun"
 Copy-Item README.md (Join-Path $release "README.md") -Force
+Copy-Item LICENSE (Join-Path $release "LICENSE") -Force
+Copy-Item DISCLAIMER.md (Join-Path $release "DISCLAIMER.md") -Force
 Copy-Item docs\CAPTURE.md (Join-Path $release "CAPTURE.md") -Force
 Copy-Item docs\screenshot-dashboard.png (Join-Path $release "screenshot-dashboard.png") -Force
 

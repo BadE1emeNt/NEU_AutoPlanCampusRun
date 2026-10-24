@@ -3,6 +3,9 @@
 > **这是开发者 README，面向维护者/二次开发。**
 > 普通使用者请先看 [README.md](README.md)（发行版说明）。
 >
+> **AI 生成声明**：代码与文档主要由 AI 编程助手生成或辅助生成，仅供学习/技术练习；
+> 非学校官方；MIT License，详见 [LICENSE](LICENSE) 与 [DISCLAIMER.md](DISCLAIMER.md)。
+>
 > 版本 0.1.0 · 2026-10-24 · Windows + Python 标准库 + Tkinter。
 
 ## 1. 项目状态
@@ -65,6 +68,8 @@
 CampusRun/
 ├─ README.md                 发行版说明（给使用者）
 ├─ README.dev.md             本文件（开发者）
+├─ LICENSE                   MIT 许可
+├─ DISCLAIMER.md             AI 生成/仅供练习/免责声明
 ├─ AGENTS.md                 项目约定/环境/当前状态/待办
 ├─ run.cmd                   GUI 启动入口
 ├─ campusrun.cmd             CLI 入口
@@ -348,3 +353,9 @@ Android APK（Tkinter 不能直接转 APK，需要重写 UI）的路线、约束
 - 错误信息可以包含 URL，但必须脱敏 query；`_redact_url` 已覆盖 ticket/token/uid 等。
 - 只读 API；不要新增提交跑步/轨迹/成绩的代码。
 - 发现凭据泄露：删除 `sports_session.dat/credentials.dat/connection.dat`，重新登录。
+
+## 15. 声明与许可
+
+- 代码/文档由 AI 生成或辅助生成，仅供学习与技术练习；不是学校官方工具。
+- 禁止代跑、刷里程、伪造记录、学术不端或商业用途。
+- 开源许可：MIT，见 [LICENSE](LICENSE)；完整免责声明见 [DISCLAIMER.md](DISCLAIMER.md)。
