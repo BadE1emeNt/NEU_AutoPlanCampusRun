@@ -1,0 +1,14 @@
+* text=auto
+
+# Windows launchers must keep CRLF line endings.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Cross-platform source/docs stay LF.
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.toml text eol=lf
+
+*.png binary
