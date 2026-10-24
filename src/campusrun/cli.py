@@ -29,6 +29,7 @@ from .formatting import (
     fmt_signed_days,
 )
 from .models import FieldMapping, HttpConnection
+from .neu.cas import CasGuideRequired
 from .providers import HttpProvider, MockProvider
 from .providers.autodetect import describe_result, detect, summary_from_payload
 from .service import CampusRunService
@@ -279,12 +280,30 @@ def _cmd_login(service: CampusRunService, args: argparse.Namespace) -> int:
     if not password and not service.has_saved_credentials:
         print("密码不能为空。", file=sys.stderr)
         return 2
-    summary = service.login_neu(
-        username,
-        password,
-        remember_password=bool(args.remember),
-        sms_provider=_cli_sms,
-    )
+    try:
+        summary = service.login_neu(
+            username,
+            password,
+            remember_password=bool(args.remember),
+            sms_provider=_cli_sms,
+        )
+    except CasGuideRequired as exc:
+        print(
+            "\n需要先在浏览器完成一次首次登录引导。\n"
+            "如果页面是“首次绑定邮箱”，直接点“稍后绑定”跳过即可。\n",
+            file=sys.stderr,
+        )
+        print(exc.url, file=sys.stderr)
+        print("\n完成后重新运行本命令。", file=sys.stderr)
+        try:
+            if sys.stdin.isatty():
+                import webbrowser
+
+                webbrowser.open(exc.url)
+                print("已尝试用默认浏览器打开引导页。", file=sys.stderr)
+        except Exception:
+            pass
+        return 2
     print(
         f"登录成功：{summary.completed_runs} 次有效记录，共 {summary.completed_km:.2f} km。"
     )

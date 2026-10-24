@@ -12,8 +12,8 @@
 - 真实数据处理已验证：用用户 HAR 中的 token 调用体育平台 API 成功；用 CASTGC 重新走
   `neuLogin` 能拿到新 token。
 - **真实 CAS 密码 POST** 已用本地 mock 验证；第一个真实账号已成功登录，
-  第二个账号被 CAS `tp_tpass/h5?act=tpass/guide` 首次登录引导页拦截，当前会给出
-  “用浏览器完成引导”的明确提示（引导页循环无法用纯 HTTP 客户端自动完成）。
+  第二个账号被 CAS `tp_tpass/h5?act=tpass/guide` 首次登录引导页拦截。该页面实际是
+  **首次绑定邮箱**，可点“稍后绑定”跳过；当前 CLI 会提示并尝试打开浏览器，完成一次后重试。
 - 发布方式：源码 + `.cmd` 启动，尚未打包 exe。
 
 ## 2. 技术栈与约束
@@ -76,6 +76,7 @@ CampusRun/
 │  ├─ CAPTURE-LOGIN-IOS.md   iPhone/iPad Reqable 抓包步骤
 │  ├─ API-NOTES.md           体育平台/CAS 协议记录（字段/加密/签名）
 │  ├─ LOGIN-NOTES.md         账号登录方案、实现状态、限制
+│  ├─ PACKAGING.md           EXE/APK 打包路线与发布检查清单
 │  ├─ screenshot-dashboard.png
 │  ├─ screenshot-account.png
 │  └─ screenshot-records.png
@@ -269,7 +270,9 @@ python tools\e2e_cli.py
 
 ## 10. 打包与发布
 
-当前发布物是源码目录 + `.cmd`，不依赖 pip 包。
+当前发布物是源码目录 + `.cmd`，不依赖 pip 包。Windows EXE（PyInstaller one-folder）
+和 Android APK（Tkinter 不能直接转 APK，需要重写 UI）的路线、约束和验收清单见
+[docs/PACKAGING.md](docs/PACKAGING.md)。
 
 `run.cmd` 查找顺序：
 
@@ -299,8 +302,8 @@ python tools\e2e_cli.py
 ## 12. 已知限制 / TODO
 
 - **单账号**：`sports_session.dat/credentials.dat` 只保存一个账号；多账号切换未实现。
-- **第二个真实账号**被 CAS 首次登录引导页（`tp_tpass/h5?act=tpass/guide`）拦截；
-  已识别并提示浏览器完成引导，纯 HTTP 无法自动跳过。完成引导后应可正常登录。
+- **第二个真实账号**被 CAS 首次绑定邮箱引导页（`tp_tpass/h5?act=tpass/guide`）拦截；
+  页面可点“稍后绑定”跳过。当前会提示并打开浏览器，完成后重试；纯 HTTP 不自动点页面。
 - 图形验证码/滑块/扫码不支持，需抓包备用。
 - 学期目标/截止日仍手动设置；`Run2/beforeRunV260` 可提供学期起止/规则，尚未接入。
 - 无 PyInstaller 单文件包。

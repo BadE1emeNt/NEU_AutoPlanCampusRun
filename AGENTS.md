@@ -53,7 +53,7 @@ src/campusrun/
   ui/              theme, widgets, app, dashboard, records, connection, help, plan_dialog
 tests/             76 个测试（analysis/curl/autodetect/config/DPAPI/http/neu/CAS/GUI e2e）
 tools/             ui_smoke.py, e2e_gui.py, e2e_cli.py, ui_preview.py, ui_plan_preview.py, screenshot.ps1
-docs/              CAPTURE.md, API-NOTES.md, LOGIN-NOTES.md, 截图
+docs/              CAPTURE.md, API-NOTES.md, LOGIN-NOTES.md, PACKAGING.md, 截图
 ```
 
 数据目录：`%APPDATA%\CampusRun`（或 `CAMPUSRUN_HOME`）：
