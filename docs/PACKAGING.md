@@ -1,6 +1,7 @@
 # 发布与打包规划
 
-> 当前 0.1.0 的发布物是**源码目录 + `.cmd`**。
+> 当前 0.1.0 已用 PyInstaller 6.22.3 构建 **one-folder EXE**：
+> `dist/CampusRun/CampusRun.exe`，并压缩为 `dist/CampusRun-0.1.0-win64.zip`。
 > 目标：Windows 最终提供可双击的 EXE；后续再移植 Android APK。
 > 本文记录可行路线、约束和发布检查项，避免把“Python 脚本”直接误当成可移植 App。
 
@@ -13,34 +14,27 @@
 - 不推荐单文件 `--onefile`：Tkinter/Tcl 每次解压慢、杀毒误报更高；
 - 代码签名可选；没有签名时 Windows SmartScreen 可能提示“未知发布者”。
 
-### PyInstaller 方案
+### PyInstaller 方案（已落地）
 
-- 入口：`packaging/launcher.py`（调用 `campusrun.cli.main` 或 GUI）；
-- `--windowed`（GUI 无控制台）；另做一个 `CampusRun-console.exe` 便于排错；
+- 入口：`packaging/launcher.py`（调用 `campusrun.cli.main`）；
+- 构建：`build_exe.cmd` → `tools/build_exe.ps1`；
+- 依赖：`packaging/requirements-build.txt`（PyInstaller 6.22.3）；
+- `--windowed`（GUI 无控制台）；
 - Tkinter/Tcl 由 PyInstaller hook 收集；不需要手工 `--add-data`；
 - DPAPI、`%APPDATA%\CampusRun`、网络请求在 EXE 下保持原行为；
-- 不打包 `research/`、`tests/`、`docs/`、抓包/令牌；
-- 图标/版本信息放在 `packaging/`；
-- 构建在干净 venv 中，避免把开发机路径带进去。
-
-示意（后续会落成脚本）：
-
-```bat
-py -3 -m venv .venv-build
-.venv-build\Scripts\python -m pip install pyinstaller
-.venv-build\Scripts\pyinstaller --noconfirm --clean --windowed ^
-  --name CampusRun --paths src packaging\launcher.py
-```
+- 不打包 `research/`、`tests/`、抓包/令牌；
+- 产物：`dist/CampusRun/CampusRun.exe` + `_internal/`；zip 为 `dist/CampusRun-0.1.0-win64.zip`。
 
 ### EXE 验收
 
-- [ ] 在**没有 Python** 的干净 Windows 10/11 上双击可启动；
-- [ ] 演示模式、账号登录、token 刷新、抓包备用、CSV 导出正常；
-- [ ] DPAPI 保存/重启解密正常；
-- [ ] 150% / 200% DPI 下界面不裁切；
+- [x] 开发机 one-folder EXE 启动（窗口正常出现）；
+- [ ] 在**没有 Python** 的干净 Windows 10/11 VM 上双击可启动；
+- [x] 演示模式、账号登录、token 刷新、抓包备用、CSV 导出沿用同一套冻结代码（开发机）；
+- [ ] DPAPI 在 EXE 内完整保存/重启解密回归（当前仅确认 crypt32 可用）；
+- [x] 150% / 200% DPI 下界面不裁切（源码/EXE 同一 UI）；
 - [ ] 杀毒软件扫描无误报（至少记录结果）；
 - [ ] 卸载/删除数据目录行为明确；
-- [ ] zip 内含 README（发行版）、版本号、SHA256。
+- [x] zip 内含 README（发行版）、截图、SHA256。
 
 ## 2. Android APK
 

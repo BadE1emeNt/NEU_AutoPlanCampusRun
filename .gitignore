@@ -7,6 +7,12 @@ build/
 dist/
 *.egg-info/
 
+# Build tooling / release scratch
+.packaging-tools/
+.tmp-pip/
+.venv-build/
+.dev-home-exe/
+
 # App data (account tokens / captured credentials)
 data/
 config.local.json

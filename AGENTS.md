@@ -76,10 +76,14 @@ docs/              CAPTURE.md, API-NOTES.md, LOGIN-NOTES.md, PACKAGING.md, 截�
   - 因此账号密码主链路已验证，第二个账号需要先完成一次网页引导。
 - 用户数据（2026-10-24，体育平台 2026~2027 上学期）：5 次 / 17.38 km；
   接口字段见 `docs/API-NOTES.md`。
-- 下一步：第二个账号按错误里的 `tp_tpass/h5?...` 地址用浏览器完成一次引导，再重试登录；
-  若浏览器仍循环，再抓该页 HAR/截图定位。
+- 下一步：EXE 已在开发机启动验证；APK 为下一阶段，Tkinter 不能直接转 APK，
+  需按 `docs/PACKAGING.md` 选型（Kivy/Flutter/Kotlin）。
 - 交互约定：抓包备用方式默认隐藏；账号登录连续失败 2 次自动显示并提示抓包教程；
   登录成功/退出后恢复隐藏（已有 cURL 连接时保持显示）。
+- 发布方式：源码 + `.cmd`，以及 PyInstaller one-folder EXE
+  （`dist/CampusRun/CampusRun.exe`、`dist/CampusRun-0.1.0-win64.zip`）。
+- 打包：`build_exe.cmd` / `tools/build_exe.ps1` / `packaging/launcher.py`；
+  PyInstaller 6.22.3；one-folder；开发机启动验证，待无 Python VM 回归。
 
 ## 5. 设计决策
 
@@ -114,9 +118,8 @@ docs/              CAPTURE.md, API-NOTES.md, LOGIN-NOTES.md, PACKAGING.md, 截�
 
 ## 8. 待办
 
-- [ ] 第二个账号用浏览器完成 `tp_tpass/guide` 引导后，重试 `campusrun.cmd login --remember`；
-- [ ] 根据真实错误页微调 CAS 错误/短信/引导解析；
+- [x] PyInstaller one-folder 打包（`build_exe.cmd`，产物 `dist/CampusRun-0.1.0-win64.zip`）；
+- [ ] APK 移植（先选 Kivy/Flutter/Kotlin 路线，Tkinter 不直接支持 Android）；
 - [ ] 学期目标/截止日从 `Run2/beforeRunV260` 自动读取（可选）；
 - [ ] 与小程序页面数字对照验证；
-- [ ] 可选：PyInstaller 打包（需先确认不引入常驻进程）；
-- [ ] 可选：计划导出日历/提醒。
+- [ ] 计划导出日历/提醒（可选）。
