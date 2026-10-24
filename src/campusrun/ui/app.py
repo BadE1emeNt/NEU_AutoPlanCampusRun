@@ -27,19 +27,22 @@ from .theme import (
     enable_dpi_awareness,
     font,
 )
+from .onboarding import OnboardingDialog
 from .widgets import NavItem, ScrollFrame, hline
 
 LOG = logging.getLogger("campusrun.ui")
 
 
 class CampusRunApp(tk.Tk):
-    def __init__(self, service: CampusRunService):
+    def __init__(self, service: CampusRunService, show_onboarding: bool = True):
         super().__init__()
         self.service = service
         self.plan = service.plan()
         self._events: queue.Queue[tuple[Callable[[Any], None], Any]] = queue.Queue()
         self._busy = False
         self._closing = False
+        self._show_onboarding = show_onboarding
+        self._onboarding_open = False
         self._last_page = service.config.last_page or "dashboard"
 
         self.title("CampusRun · 校园乐跑")
@@ -75,6 +78,8 @@ class CampusRunApp(tk.Tk):
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.after(100, self._drain_events)
         self.after(350, self._auto_refresh)
+        if show_onboarding:
+            self.after(550, self.show_onboarding)
         if service.startup_warnings:
             self.after(
                 600,
@@ -362,6 +367,25 @@ class CampusRunApp(tk.Tk):
         messagebox.showerror(title, message, parent=self)
 
     # ------------------------------------------------------------------
+    def show_onboarding(self, force: bool = False) -> None:
+        if self._closing or self._onboarding_open:
+            return
+        if not force and self.service.config.onboarding_seen:
+            return
+        self._onboarding_open = True
+        OnboardingDialog(self, on_finish=self._onboarding_finished)
+
+    def _onboarding_finished(self, completed: bool) -> None:
+        self._onboarding_open = False
+        if not completed:
+            return
+        if not self.service.config.onboarding_seen:
+            self.service.config.onboarding_seen = True
+            try:
+                self.service.save_config()
+            except CampusRunError:
+                pass
+
     def _auto_refresh(self) -> None:
         if self._closing:
             return

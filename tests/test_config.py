@@ -23,6 +23,7 @@ class ConfigTests(unittest.TestCase):
                 rest_weekdays=[5, 6],
                 pace_min_per_km=6.0,
                 demo_mode=False,
+                onboarding_seen=True,
             )
             config.save(paths)
             loaded = AppConfig.load(paths)
@@ -30,6 +31,7 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(loaded.deadline, date(2026, 12, 31))
             self.assertEqual(loaded.rest_weekdays, [5, 6])
             self.assertFalse(loaded.demo_mode)
+            self.assertTrue(loaded.onboarding_seen)
             self.assertEqual(loaded.to_plan_settings().rest_weekdays, frozenset({5, 6}))
 
     def test_missing_uses_defaults(self):
@@ -37,6 +39,7 @@ class ConfigTests(unittest.TestCase):
             loaded = AppConfig.load(AppPaths(Path(tmp)))
             self.assertEqual(loaded.target_km, 96)
             self.assertTrue(loaded.demo_mode)
+            self.assertFalse(loaded.onboarding_seen)
 
     def test_corrupt_raises(self):
         with workspace_tmp() as tmp:

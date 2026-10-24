@@ -122,6 +122,7 @@ CampusRun/
 │     ├─ dashboard.py        概览/场景/计划
 │     ├─ records.py          记录表/CSV
 │     ├─ connection.py       账号登录 + 隐藏的抓包备用
+│     ├─ onboarding.py       首次使用指南弹窗（不含抓包）
 │     ├─ help.py             抓包教程
 │     └─ plan_dialog.py      完整计划弹窗
 ├─ tests/

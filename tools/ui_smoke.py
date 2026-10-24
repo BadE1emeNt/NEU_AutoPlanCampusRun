@@ -24,7 +24,7 @@ def main() -> int:
     home = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / ".dev-home"
     enable_dpi_awareness()
     service = CampusRunService(AppPaths(home))
-    app = CampusRunApp(service)
+    app = CampusRunApp(service, show_onboarding=False)
     try:
         app.update_idletasks()
         app.update()

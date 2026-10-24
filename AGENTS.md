@@ -50,7 +50,7 @@ src/campusrun/
   jsonpath.py      data.list[0] 之类路径
   providers/       MockProvider / HttpProvider / autodetect
   cli.py           plan / fetch / import-curl / config / doctor / gui
-  ui/              theme, widgets, app, dashboard, records, connection, help, plan_dialog
+  ui/              theme, widgets, app, onboarding, dashboard, records, connection, help, plan_dialog
 tests/             77 个测试（analysis/curl/autodetect/config/DPAPI/http/neu/CAS/GUI e2e）
 tools/             ui_smoke.py, e2e_gui.py, e2e_cli.py, ui_preview.py, ui_plan_preview.py, screenshot.ps1
 docs/              CAPTURE.md, API-NOTES.md, LOGIN-NOTES.md, PACKAGING.md, 截图

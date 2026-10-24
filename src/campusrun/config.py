@@ -94,6 +94,7 @@ class AppConfig:
     auth_mode: str = "password"
     remember_password: bool = False
     neu_username: str = ""
+    onboarding_seen: bool = False
     window_geometry: str = ""
     last_page: str = "dashboard"
 
@@ -121,6 +122,7 @@ class AppConfig:
             "auth_mode": self.auth_mode,
             "remember_password": self.remember_password,
             "neu_username": self.neu_username,
+            "onboarding_seen": self.onboarding_seen,
             "window_geometry": self.window_geometry,
             "last_page": self.last_page,
         }
@@ -202,6 +204,7 @@ class AppConfig:
             auth_mode=auth_mode,
             remember_password=bool(raw.get("remember_password", False)),
             neu_username=str(raw.get("neu_username") or ""),
+            onboarding_seen=bool(raw.get("onboarding_seen", False)),
             window_geometry=geometry,
             last_page=last_page,
         )

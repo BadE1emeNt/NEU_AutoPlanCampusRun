@@ -38,10 +38,10 @@ class HelpPage(tk.Frame):
         header.grid_columnconfigure(0, weight=1)
         left = tk.Frame(header, bg=BG)
         left.grid(row=0, column=0, sticky="w")
-        tk.Label(left, text="抓包指引", bg=BG, fg=TEXT, font=font("h1"), anchor="w").pack(anchor="w")
+        tk.Label(left, text="抓包登录（备用）", bg=BG, fg=TEXT, font=font("h1"), anchor="w").pack(anchor="w")
         tk.Label(
             left,
-            text="小程序在手机上运行，程序无法直接登录；需要你抓一条已登录状态的请求交给它。",
+            text="只有账号登录失败或无法通过验证时再用；抓包请求等同于登录令牌。",
             bg=BG,
             fg=MUTED,
             font=font("small"),
@@ -51,6 +51,9 @@ class HelpPage(tk.Frame):
         ).pack(anchor="w", pady=(5, 0))
         actions = tk.Frame(header, bg=BG)
         actions.grid(row=0, column=1, sticky="e")
+        ttk.Button(actions, text="使用指南", command=lambda: self.app.show_onboarding(force=True)).pack(
+            side="left", padx=(0, 8)
+        )
         ttk.Button(actions, text="打开完整指南", command=self._open_docs).pack(side="left", padx=(0, 8))
         ttk.Button(actions, text="打开数据目录", command=self._open_data_dir).pack(side="left")
 

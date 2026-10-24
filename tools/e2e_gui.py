@@ -81,7 +81,7 @@ def main() -> int:
     with Server() as server:
         enable_dpi_awareness()
         service = CampusRunService(AppPaths(home))
-        app = CampusRunApp(service)
+        app = CampusRunApp(service, show_onboarding=False)
         try:
             app.update()
             page = app.pages["connection"]

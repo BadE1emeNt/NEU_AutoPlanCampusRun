@@ -21,7 +21,7 @@ from campusrun.ui.theme import enable_dpi_awareness  # noqa: E402
 def main() -> int:
     home = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / ".dev-home"
     enable_dpi_awareness()
-    app = CampusRunApp(CampusRunService(AppPaths(home)))
+    app = CampusRunApp(CampusRunService(AppPaths(home)), show_onboarding=False)
     app.show_page("dashboard")
     app.update_idletasks()
     app.update()

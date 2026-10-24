@@ -22,7 +22,7 @@ def main() -> int:
     home = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / ".dev-home"
     scroll = float(sys.argv[3]) if len(sys.argv) > 3 else 0.0
     enable_dpi_awareness()
-    app = CampusRunApp(CampusRunService(AppPaths(home)))
+    app = CampusRunApp(CampusRunService(AppPaths(home)), show_onboarding=False)
     app.show_page(page)
     if scroll:
         app.update_idletasks()
