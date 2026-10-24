@@ -8,11 +8,12 @@
 ## 1. 项目状态
 
 - 账号密码登录、CAS/RSA、短信二次认证、体育平台 AES/签名 API、DPAPI 存储、GUI/CLI、规划算法均已实现。
-- **74 个测试全部通过**（含本地 mock CAS、体育平台加密接口、DPAPI、GUI 冒烟）。
+- **76 个测试全部通过**（含本地 mock CAS、体育平台加密接口、DPAPI、GUI 冒烟）。
 - 真实数据处理已验证：用用户 HAR 中的 token 调用体育平台 API 成功；用 CASTGC 重新走
   `neuLogin` 能拿到新 token。
-- **真实 CAS 密码 POST** 已用本地 mock 验证，但只在用户第一个真实账号上成功跑通一次；
-  第二个账号的跳转链问题仍在定位（见 `docs/LOGIN-NOTES.md`）。
+- **真实 CAS 密码 POST** 已用本地 mock 验证；第一个真实账号已成功登录，
+  第二个账号被 CAS `tp_tpass/h5?act=tpass/guide` 首次登录引导页拦截，当前会给出
+  “用浏览器完成引导”的明确提示（引导页循环无法用纯 HTTP 客户端自动完成）。
 - 发布方式：源码 + `.cmd` 启动，尚未打包 exe。
 
 ## 2. 技术栈与约束
@@ -298,7 +299,8 @@ python tools\e2e_cli.py
 ## 12. 已知限制 / TODO
 
 - **单账号**：`sports_session.dat/credentials.dat` 只保存一个账号；多账号切换未实现。
-- **第二个真实账号**登录跳转失败待定位（脱敏 trace 已加入）。
+- **第二个真实账号**被 CAS 首次登录引导页（`tp_tpass/h5?act=tpass/guide`）拦截；
+  已识别并提示浏览器完成引导，纯 HTTP 无法自动跳过。完成引导后应可正常登录。
 - 图形验证码/滑块/扫码不支持，需抓包备用。
 - 学期目标/截止日仍手动设置；`Run2/beforeRunV260` 可提供学期起止/规则，尚未接入。
 - 无 PyInstaller 单文件包。

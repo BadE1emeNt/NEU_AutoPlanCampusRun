@@ -68,6 +68,20 @@ class SmsRequired(CasError):
         self.challenge = challenge
 
 
+class CasGuideRequired(CasError):
+    """CAS 首次登录引导页：需要用户在浏览器里完成一次确认。"""
+
+    def __init__(self, url: str):
+        super().__init__(
+            "学校统一身份认证要求先完成首次登录引导（tp_tpass/guide）。\n"
+            "请用浏览器打开下面的地址，登录并完成引导（确认信息/修改密码/绑定手机等），"
+            "然后重新运行登录：\n"
+            f"{url}\n"
+            "完成一次后，本工具再登录通常就不会再被引导页拦截。"
+        )
+        self.url = url
+
+
 @dataclass
 class CasLoginResult:
     session: SportsSession
@@ -439,6 +453,9 @@ class CasLoginClient:
         visited: set[str] = set()
         self._record(f"START {_redact_url(current)}")
         for _ in range(10):
+            if _is_guide_url(current):
+                self._record("检测到 CAS 首次登录引导页，停止自动跳转")
+                raise CasGuideRequired(_guide_url_for_browser(current))
             token = _parse_sports_token(current)
             if token is not None:
                 if token.is_complete():
@@ -563,6 +580,34 @@ def _page_hint(html: str) -> str:
     )
     text = (title + " | " if title else "") + body[:180]
     return text
+
+
+def _is_guide_url(value: str) -> bool:
+    try:
+        parts = urllib.parse.urlsplit(value)
+        if not parts.path.rstrip("/").endswith("/tp_tpass/h5"):
+            return False
+        params = urllib.parse.parse_qs(parts.query)
+        return (params.get("act") or [""])[0].lower() == "tpass/guide"
+    except ValueError:
+        return False
+
+
+def _guide_url_for_browser(value: str) -> str:
+    """去掉 ticket/token，保留 service/act，得到用户可直接打开的引导页 URL。"""
+
+    try:
+        parts = urllib.parse.urlsplit(value)
+        query = [
+            (key, item)
+            for key, item in urllib.parse.parse_qsl(parts.query, keep_blank_values=True)
+            if key.lower() not in ("ticket", "token", "code", "session")
+        ]
+        return urllib.parse.urlunsplit(
+            (parts.scheme, parts.netloc, parts.path, urllib.parse.urlencode(query), parts.fragment)
+        )
+    except ValueError:
+        return value
 
 
 def _redact_url(value: str) -> str:

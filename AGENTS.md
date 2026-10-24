@@ -51,7 +51,7 @@ src/campusrun/
   providers/       MockProvider / HttpProvider / autodetect
   cli.py           plan / fetch / import-curl / config / doctor / gui
   ui/              theme, widgets, app, dashboard, records, connection, help, plan_dialog
-tests/             74 个测试（analysis/curl/autodetect/config/DPAPI/http/neu/CAS/GUI e2e）
+tests/             76 个测试（analysis/curl/autodetect/config/DPAPI/http/neu/CAS/GUI e2e）
 tools/             ui_smoke.py, e2e_gui.py, e2e_cli.py, ui_preview.py, ui_plan_preview.py, screenshot.ps1
 docs/              CAPTURE.md, API-NOTES.md, LOGIN-NOTES.md, 截图
 ```
@@ -62,7 +62,7 @@ docs/              CAPTURE.md, API-NOTES.md, LOGIN-NOTES.md, 截图
 
 ## 4. 当前状态（2026-10-24 晚）
 
-- 核心算法、配置、DPAPI、cURL、自动识别、CLI、GUI 均完成；74 个测试通过。
+- 核心算法、配置、DPAPI、cURL、自动识别、CLI、GUI 均完成；76 个测试通过。
 - **账号登录已实现**：
   - CAS 登录页解析 `lt/execution` + RSA(PKCS#1 v1.5) 加密 `学号+密码`；
   - 支持短信二次认证（`phone(...)` 挑战 → `tpass/device` 发送/校验，勾选信任设备）；
@@ -71,13 +71,13 @@ docs/              CAPTURE.md, API-NOTES.md, LOGIN-NOTES.md, 截图
   - `sports_session.dat` / `credentials.dat` DPAPI；token 过期可自动重登。
 - **真实账号验证进展（2026-10-24）**：
   - 第一个账号 `login --remember` **成功**，读取到 5 次 / 17.38 km；
-  - 第二个账号在 CAS 登录后的 H5 跳转阶段失败（`登录跳转次数过多，或没有拿到 token`）；
-  - 已加入脱敏跳转链 trace，等待用户回传第二个账号的失败链；
-  - 因此账号密码主链路已验证，第二个账号的边界情况仍待定位。
+  - 第二个账号在 CAS 登录后的 `tp_tpass/h5?act=tpass/guide` 首次登录引导页循环；
+  - 已识别该页面并提示用浏览器完成引导，避免无意义跳转；
+  - 因此账号密码主链路已验证，第二个账号需要先完成一次网页引导。
 - 用户数据（2026-10-24，体育平台 2026~2027 上学期）：5 次 / 17.38 km；
   接口字段见 `docs/API-NOTES.md`。
-- 下一步：根据第二个账号的 `登录跳转链` 定位是短信、权限、还是 H5 跳转格式问题；
-  同时保持抓包备用可用。
+- 下一步：第二个账号按错误里的 `tp_tpass/h5?...` 地址用浏览器完成一次引导，再重试登录；
+  若浏览器仍循环，再抓该页 HAR/截图定位。
 - 交互约定：抓包备用方式默认隐藏；账号登录连续失败 2 次自动显示并提示抓包教程；
   登录成功/退出后恢复隐藏（已有 cURL 连接时保持显示）。
 
@@ -114,8 +114,8 @@ docs/              CAPTURE.md, API-NOTES.md, LOGIN-NOTES.md, 截图
 
 ## 8. 待办
 
-- [ ] 用户用真实账号跑一次 `campusrun.cmd login --remember`，确认 CAS 密码/短信流程；
-- [ ] 根据真实错误页微调 CAS 错误/短信解析；
+- [ ] 第二个账号用浏览器完成 `tp_tpass/guide` 引导后，重试 `campusrun.cmd login --remember`；
+- [ ] 根据真实错误页微调 CAS 错误/短信/引导解析；
 - [ ] 学期目标/截止日从 `Run2/beforeRunV260` 自动读取（可选）；
 - [ ] 与小程序页面数字对照验证；
 - [ ] 可选：PyInstaller 打包（需先确认不引入常驻进程）；

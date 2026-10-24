@@ -11,7 +11,14 @@ from unittest.mock import patch
 from . import workspace_tmp
 from campusrun.config import AppPaths
 from campusrun.models import RunRecord, RunSummary
-from campusrun.neu.cas import CasLoginClient, CasLoginError, FALLBACK_PUBLIC_KEY
+from campusrun.neu.cas import (
+    CasGuideRequired,
+    CasLoginClient,
+    CasLoginError,
+    FALLBACK_PUBLIC_KEY,
+    _guide_url_for_browser,
+    _is_guide_url,
+)
 from campusrun.neu.crypto import (
     aes_cbc_decrypt,
     aes_cbc_encrypt,
@@ -219,6 +226,25 @@ class _CasServer:
 
 
 class CasTests(unittest.TestCase):
+    def test_guide_url_detection(self):
+        url = (
+            "https://pass.neu.edu.cn/tp_tpass/h5?act=tpass%2Fguide"
+            "&service=https%3A%2F%2Ftybzhtypt.neu.edu.cn%2Flogin"
+        )
+        self.assertTrue(_is_guide_url(url))
+        self.assertFalse(_is_guide_url("https://pass.neu.edu.cn/tpass/login"))
+        with self.assertRaises(CasGuideRequired) as ctx:
+            CasLoginClient()._follow_to_token(url + "&ticket=ST-secret")
+        self.assertNotIn("ST-secret", ctx.exception.url)
+        self.assertTrue(ctx.exception.url.startswith("https://pass.neu.edu.cn/tp_tpass/h5"))
+
+    def test_guide_url_strips_ticket(self):
+        safe = _guide_url_for_browser(
+            "https://pass.neu.edu.cn/tp_tpass/h5?act=tpass%2Fguide&ticket=ST-123&service=x"
+        )
+        self.assertNotIn("ST-123", safe)
+        self.assertIn("service=x", safe)
+
     def test_login(self):
         server = _CasServer()
         try:

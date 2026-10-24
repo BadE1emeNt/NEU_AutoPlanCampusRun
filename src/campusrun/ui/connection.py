@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import os
 import tkinter as tk
+import webbrowser
 from tkinter import messagebox, ttk
 
 from ..curlparse import parse_capture
 from ..errors import CampusRunError
 from ..jsonpath import preview_json
 from ..models import FieldMapping, HttpConnection
+from ..neu.cas import CasGuideRequired
 from ..providers import HttpProvider
 from ..providers.autodetect import describe_result, detect, summary_from_payload
 from .theme import (
@@ -602,8 +604,16 @@ class ConnectionPage(tk.Frame):
 
     def _neu_login_error(self, exc: Exception) -> None:
         self._neu_busy(False)
-        self._neu_failures += 1
         self.neu_status.configure(text=f"登录失败：{exc}", fg=DANGER)
+        if isinstance(exc, CasGuideRequired):
+            if messagebox.askyesno(
+                "需要完成首次登录引导",
+                f"{exc}\n\n是否用浏览器打开引导页？完成后再回来点“登录并读取”。",
+                parent=self.app,
+            ):
+                webbrowser.open(exc.url)
+            return
+        self._neu_failures += 1
         if self._neu_failures >= 2 and not self._capture_visible:
             self._reveal_capture_section()
             open_tutorial = messagebox.askyesno(
