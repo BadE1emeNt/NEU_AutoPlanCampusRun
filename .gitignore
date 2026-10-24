@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
+
+# App data (account tokens / captured credentials)
+data/
+config.local.json
+*.local.json
+captures/
+exports/
+.dev-home/
+
+# Test scratch / permission-recovery artifacts
+tests/.tmp/
+.acl-recovery/
+
+# OS / editors
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
