@@ -233,8 +233,10 @@ class CasTests(unittest.TestCase):
         )
         self.assertTrue(_is_guide_url(url))
         self.assertFalse(_is_guide_url("https://pass.neu.edu.cn/tpass/login"))
+        client = CasLoginClient(service_url=url)
+        client._login_url = lambda: url
         with self.assertRaises(CasGuideRequired) as ctx:
-            CasLoginClient()._follow_to_token(url + "&ticket=ST-secret")
+            client._follow_to_token(url + "&ticket=ST-secret")
         self.assertNotIn("ST-secret", ctx.exception.url)
         self.assertTrue(ctx.exception.url.startswith("https://pass.neu.edu.cn/tp_tpass/h5"))
 

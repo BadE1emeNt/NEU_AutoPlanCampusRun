@@ -74,7 +74,7 @@ class CasGuideRequired(CasError):
     def __init__(self, url: str):
         super().__init__(
             "学校统一身份认证要求先完成首次登录引导（tp_tpass/guide）。\n"
-            "程序已尝试直接访问原服务，仍被引导页拦截。\n"
+            "程序已尝试重新进入 CAS 登录入口，仍被引导页拦截。\n"
             "这个页面通常是“首次绑定邮箱/完善信息”；如果页面有“稍后绑定”，直接点它跳过即可。\n"
             "请用浏览器打开下面的地址，登录并完成/跳过引导，然后重新运行登录：\n"
             f"{url}\n"
@@ -458,10 +458,10 @@ class CasLoginClient:
         for _ in range(10):
             if _is_guide_url(current):
                 if not self._guide_fallback_done:
-                    # “稍后绑定”本质上可能只是回到原 service；先尝试直接访问一次。
+                    # 浏览器点“稍后绑定”后走的就是 CAS 登录入口；带着 CASTGC 再进一次。
                     self._guide_fallback_done = True
-                    self._record("检测到首次登录引导页，尝试直接访问原 service 跳过")
-                    current = self.service_url
+                    self._record("检测到首次登录引导页，尝试重新进入 CAS 登录入口跳过")
+                    current = self._login_url()
                     continue
                 self._record("检测到 CAS 首次登录引导页，停止自动跳转")
                 raise CasGuideRequired(_guide_url_for_browser(current))
