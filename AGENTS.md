@@ -1,6 +1,7 @@
 # AGENTS.md · CampusRun 项目记录
 
-> 给后续会话/开发者：先读本文件，再读 `README.md` 与 `docs/CAPTURE.md`。
+> 给后续会话/开发者：先读 `README.md`（发行版/使用者）与 `README.dev.md`（开发者），
+> 再读 `docs/LOGIN-NOTES.md`、`docs/API-NOTES.md`。
 
 ## 1. 项目是什么
 
@@ -68,12 +69,15 @@ docs/              CAPTURE.md, API-NOTES.md, LOGIN-NOTES.md, 截图
   - H5 `neuLogin?ticket=...` → 从最终跳转 URL 取 token/uid/学号；
   - 体育平台 API：AES-128-CBC、MD5 签名、token 调用；
   - `sports_session.dat` / `credentials.dat` DPAPI；token 过期可自动重登。
-- **真实账号密码登录尚未由用户实测**（2026-10-24 仅用用户提供的 HAR
-  验证了 token/API 与 CAS 页面解析；CAS 密码 POST 用本地 mock 验证）。
+- **真实账号验证进展（2026-10-24）**：
+  - 第一个账号 `login --remember` **成功**，读取到 5 次 / 17.38 km；
+  - 第二个账号在 CAS 登录后的 H5 跳转阶段失败（`登录跳转次数过多，或没有拿到 token`）；
+  - 已加入脱敏跳转链 trace，等待用户回传第二个账号的失败链；
+  - 因此账号密码主链路已验证，第二个账号的边界情况仍待定位。
 - 用户数据（2026-10-24，体育平台 2026~2027 上学期）：5 次 / 17.38 km；
   接口字段见 `docs/API-NOTES.md`。
-- 下一步：用户运行 `campusrun.cmd login --remember` 或 GUI 登录，报告是否需要短信/错误码；
-  若真实 CAS 表单与 mock 有差异，按错误页面微调。
+- 下一步：根据第二个账号的 `登录跳转链` 定位是短信、权限、还是 H5 跳转格式问题；
+  同时保持抓包备用可用。
 - 交互约定：抓包备用方式默认隐藏；账号登录连续失败 2 次自动显示并提示抓包教程；
   登录成功/退出后恢复隐藏（已有 cURL 连接时保持显示）。
 
