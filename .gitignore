@@ -14,6 +14,8 @@ config.local.json
 captures/
 exports/
 .dev-home/
+research/
+*.har
 
 # Test scratch / permission-recovery artifacts
 tests/.tmp/
