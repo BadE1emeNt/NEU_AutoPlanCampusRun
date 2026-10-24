@@ -32,12 +32,14 @@ if (-not (Test-Path $venvPython)) {
 & $venvPython -m pip install --disable-pip-version-check -r packaging\requirements-build.txt
 if ($LASTEXITCODE -ne 0) { throw "pip install failed" }
 
+New-Item -ItemType Directory -Force "build\pyinstaller" | Out-Null
 & $venvPython -m PyInstaller `
     --noconfirm `
     --clean `
     --windowed `
     --name CampusRun `
     --paths src `
+    --specpath "build\pyinstaller" `
     --distpath dist `
     --workpath build\pyinstaller `
     packaging\launcher.py
@@ -45,10 +47,16 @@ if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed" }
 
 $release = Join-Path $root "dist\CampusRun"
 Copy-Item README.md (Join-Path $release "README.md") -Force
+Copy-Item README.dev.md (Join-Path $release "README.dev.md") -Force
 Copy-Item LICENSE (Join-Path $release "LICENSE") -Force
 Copy-Item DISCLAIMER.md (Join-Path $release "DISCLAIMER.md") -Force
-Copy-Item docs\CAPTURE.md (Join-Path $release "CAPTURE.md") -Force
-Copy-Item docs\screenshot-dashboard.png (Join-Path $release "screenshot-dashboard.png") -Force
+$docsRelease = Join-Path $release "docs"
+New-Item -ItemType Directory -Force $docsRelease | Out-Null
+foreach ($name in @("CAPTURE.md", "API-NOTES.md", "LOGIN-NOTES.md", "PACKAGING.md", "screenshot-dashboard.png", "screenshot-account.png", "screenshot-records.png")) {
+    if (Test-Path (Join-Path "docs" $name)) {
+        Copy-Item (Join-Path "docs" $name) (Join-Path $docsRelease $name) -Force
+    }
+}
 
 $zip = Join-Path $root "dist\CampusRun-0.1.0-win64.zip"
 if (Test-Path $zip) { Remove-Item $zip -Force }
