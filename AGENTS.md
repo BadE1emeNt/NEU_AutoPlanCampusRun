@@ -6,12 +6,13 @@
 
 Windows 桌面工具 + 纯 Python 核心库：
 
-- 从东北大学“校园乐跑”小程序读取**只读**跑步统计（抓包 cURL，复用登录态）；
+- 从东北大学“校园乐跑”小程序读取**只读**跑步统计（当前为抓包 cURL 复用登录态；
+  账号密码自动登录方案见 `docs/LOGIN-NOTES.md`，等待登录协议）；
 - 按目标 km / 截止日期 / 休息日，计算每日摊平里程、2/3/4/5 km 完成天数、逐日计划；
 - Tkinter GUI（演示模式开箱可用）+ CLI；
-- 凭据用 Windows DPAPI 加密，不实现登录、签名、提交跑步。
+- 凭据用 Windows DPAPI 加密；不实现登录签名、不提交跑步。
 
-**约束**：只读、不伪造轨迹、不自动刷里程；不常驻后台；不做账号密码登录。
+**约束**：只读、不伪造轨迹、不自动刷里程；不常驻后台；不猜测登录协议。
 
 ## 2. 环境
 
@@ -50,7 +51,7 @@ src/campusrun/
   ui/              theme, widgets, app, dashboard, records, connection, help, plan_dialog
 tests/             66 个测试（analysis/curl/autodetect/config/DPAPI/http/GUI e2e）
 tools/             ui_smoke.py, e2e_gui.py, e2e_cli.py, ui_preview.py, ui_plan_preview.py, screenshot.ps1
-docs/              CAPTURE.md, API-NOTES.md, 截图
+docs/              CAPTURE.md, API-NOTES.md, LOGIN-NOTES.md, 截图
 ```
 
 数据目录：`%APPDATA%\CampusRun`（或 `CAMPUSRUN_HOME`）：
@@ -62,14 +63,20 @@ docs/              CAPTURE.md, API-NOTES.md, 截图
 - 66 个测试通过（含本地 HTTP 服务器与 GUI 端到端：
   粘贴 cURL → 抓取 → 自动识别 → DPAPI 保存 → 重启 → 刷新）。
 - 演示数据固定 38.4 km / 12 次；规划结果已与手算核对。
+- **方向调整（2026-10-24 晚）**：用户要的是“本机输入账号密码 → 自动登录 → 拉数据”，
+  不是 cURL 复用。登录协议尚未拿到，见 `docs/LOGIN-NOTES.md`。
+  已确认 App 为「智慧东大」3.1.8（`com.sunyt.testdemo`），学校 SSO 已启用短信二次认证；
+  纯密码能否自动登录取决于 App 自身登录实现，不能靠猜。
 - **真实东北大学接口尚未抓包**。`docs/API-NOTES.md` 是待填模板。
-  下一步需要用户提供：客户端类型、脱敏后的请求路径、响应 JSON 字段结构。
-  拿到后优先补 `profiles/neu.json` 默认映射与 fixture 测试，而不是写死不可维护的解析。
+  下一步需要用户提供：APK（推荐，静态分析登录）或一次登录抓包（密码不要发聊天）。
+  拿到后实现 `login/` + `credentials.py` + 会话刷新，并补 fixture 测试。
 
 ## 5. 设计决策
 
-- 不做登录/签名逆向：复用用户抓到的已登录请求，换取低风险与低维护成本。
-- 自动识别 + 手工 JSON 路径：接口未知时仍可用；识别结果必须显示“N 次 / X km”供用户核对。
+- **登录**：不猜测接口，不逆向签名算法；优先分析 APK 或一次登录抓包，再实现
+  `login/` + `credentials.py` + 会话刷新。若学校短信二次认证不可绕过，则做“首次密码+短信、
+  记住设备/会话，之后自动刷新”的半自动方案，并如实说明。
+- 只读数据层：自动识别 + 手工 JSON 路径；接口未知时仍可用；识别结果必须显示“N 次 / X km”供用户核对。
 - 规则可配置：单次 2–5 km、每天 1 次、目标与截止日、每周休息日。
 - 每天去重取最远一次，避免接口返回多次尝试时高估里程；`count_mode=sum` 可切换。
 - DPAPI 降级：非 Windows 或 DPAPI 失败时明文保存并明确警告；目标平台 Windows 下应加密。
@@ -95,7 +102,8 @@ docs/              CAPTURE.md, API-NOTES.md, 截图
 
 ## 8. 待办
 
-- [ ] 用户抓包后填 `docs/API-NOTES.md`；
+- [ ] 等用户提供 APK 或登录抓包，填 `docs/LOGIN-NOTES.md` 并实现账号登录；
+- [ ] 拿到登录/数据接口后填 `docs/API-NOTES.md`；
 - [ ] 视字段稳定性增加 NEU 默认 profile 与 fixture；
 - [ ] 与小程序页面数字对照验证；
 - [ ] 可选：PyInstaller 打包（需先确认不引入常驻进程）；
