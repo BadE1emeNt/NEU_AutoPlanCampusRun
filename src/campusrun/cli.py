@@ -6,6 +6,7 @@ GUI 是主界面；CLI 用于快速查看规划、导入抓包、排查环境。
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
 import sys
 from datetime import date
@@ -96,9 +97,15 @@ def build_parser() -> argparse.ArgumentParser:
     plan.add_argument("--demo", action="store_true", help="使用演示进度，忽略真实缓存")
     plan.add_argument("--json", action="store_true", help="输出 JSON")
 
-    fetch = sub.add_parser("fetch", help="按已保存的 cURL 拉取一次数据")
+    fetch = sub.add_parser("fetch", help="按已保存的登录态拉取一次数据")
     fetch.add_argument("--json", action="store_true", help="输出 JSON")
     fetch.add_argument("--limit", type=int, default=10, help="最多显示多少条记录")
+
+    login = sub.add_parser("login", help="用学号/密码登录学校统一身份认证")
+    login.add_argument("--user", help="学号（不填则交互输入）")
+    login.add_argument("--remember", action="store_true", help="用 DPAPI 保存密码，便于会话过期后自动重登")
+
+    sub.add_parser("logout", help="清除本机保存的体育平台会话与密码")
 
     imp = sub.add_parser("import-curl", help="解析 cURL、预览响应、保存连接")
     imp.add_argument("--file", type=Path, help="包含 cURL 的文本文件（默认从标准输入读取）")
@@ -129,6 +136,10 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_plan(service, args)
         if args.command == "fetch":
             return _cmd_fetch(service, args)
+        if args.command == "login":
+            return _cmd_login(service, args)
+        if args.command == "logout":
+            return _cmd_logout(service)
         if args.command == "import-curl":
             return _cmd_import(service, args)
         if args.command == "config":
@@ -184,9 +195,11 @@ def _progress_from_args(service: CampusRunService, args: argparse.Namespace) -> 
             source="命令行指定",
             has_data=True,
         )
-    if args.demo or service.summary is None:
+    if args.demo or (service.summary is None and service.config.demo_mode):
         summary = MockProvider().fetch()
         return Progress.from_summary(summary)
+    if service.summary is None:
+        raise CampusRunError("还没有数据。请先运行 `campusrun login` 或 `campusrun fetch`。")
     return Progress.from_summary(service.summary)
 
 
@@ -249,8 +262,48 @@ def _print_plan(plan: PlanResult, settings: PlanSettings) -> None:
     )
 
 
+def _cli_sms(challenge) -> str:
+    print(f"\n{getattr(challenge, 'hint', '需要短信验证码')}", file=sys.stderr)
+    try:
+        return input("短信验证码：").strip()
+    except EOFError:
+        return ""
+
+
+def _cmd_login(service: CampusRunService, args: argparse.Namespace) -> int:
+    username = (args.user or input("学号：")).strip()
+    if not username:
+        print("学号不能为空。", file=sys.stderr)
+        return 2
+    password = getpass.getpass("统一身份认证密码（不会显示）：")
+    if not password and not service.has_saved_credentials:
+        print("密码不能为空。", file=sys.stderr)
+        return 2
+    summary = service.login_neu(
+        username,
+        password,
+        remember_password=bool(args.remember),
+        sms_provider=_cli_sms,
+    )
+    print(
+        f"登录成功：{summary.completed_runs} 次有效记录，共 {summary.completed_km:.2f} km。"
+    )
+    if args.remember:
+        print("密码已用 Windows DPAPI 保存；会话过期时可自动重登。")
+    else:
+        print("未保存密码；token 过期后需要重新运行 login。")
+    return 0
+
+
+def _cmd_logout(service: CampusRunService) -> int:
+    service.clear_neu_login(clear_credentials=True)
+    service.set_demo_mode(True)
+    print("已清除本机的体育平台会话与保存的密码。")
+    return 0
+
+
 def _cmd_fetch(service: CampusRunService, args: argparse.Namespace) -> int:
-    summary = service.refresh()
+    summary = service.refresh(_cli_sms)
     if args.json:
         print(json.dumps(summary.to_dict(), ensure_ascii=False, indent=2))
         return 0
@@ -312,7 +365,13 @@ def _cmd_config(service: CampusRunService, args: argparse.Namespace) -> int:
         if not args.yes:
             print("这会删除配置、连接与缓存。确认请加 --yes。", file=sys.stderr)
             return 2
-        for path in (service.paths.config_file, service.paths.connection_file, service.paths.cache_file):
+        for path in (
+            service.paths.config_file,
+            service.paths.connection_file,
+            service.paths.sports_session_file,
+            service.paths.credentials_file,
+            service.paths.cache_file,
+        ):
             try:
                 path.unlink()
             except FileNotFoundError:
@@ -324,6 +383,11 @@ def _cmd_config(service: CampusRunService, args: argparse.Namespace) -> int:
     print(
         f"连接文件：{service.paths.connection_file} "
         f"（{'已加密保存' if service.connection_encrypted else ('存在但未加密' if service.has_connection else '未配置')}）"
+    )
+    print(
+        f"体育平台登录：{'已登录' if service.has_neu_session else '未登录'}"
+        f"（{'DPAPI 加密' if service.neu_session_encrypted else '无会话'}）；"
+        f"保存密码：{'是' if service.has_saved_credentials else '否'}"
     )
     print(f"缓存文件：{service.paths.cache_file}")
     print(f"当前配置：{config_summary(service.config)}")
@@ -364,6 +428,10 @@ def _cmd_doctor(service: CampusRunService) -> int:
 
     print(f"配置：{config_summary(service.config)}")
     print(f"连接：{'已配置' if service.has_connection else '未配置'}")
+    print(
+        f"账号登录：{'已登录（uid=' + (service.sports_session.uid if service.sports_session else '') + '）' if service.has_neu_session else '未登录'}"
+        f"；保存密码：{'是' if service.has_saved_credentials else '否'}"
+    )
     if service.summary is not None:
         print(
             f"缓存：{service.summary.provider} · {service.summary.completed_km:.1f} km / "

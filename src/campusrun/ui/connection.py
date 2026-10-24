@@ -64,6 +64,7 @@ class ConnectionPage(tk.Frame):
         ttk.Button(header, text="抓包指引", command=lambda: self.app.show_page("help")).pack(side="right")
 
         self._build_status(root)
+        self._build_account(root)
         self._build_capture(root)
         self._build_preview(root)
         self._build_mapping(root)
@@ -134,12 +135,103 @@ class ConnectionPage(tk.Frame):
         value.pack(anchor="w", pady=(2, 0))
         return value
 
+    def _build_account(self, parent: tk.Misc) -> None:
+        card = Card(parent, padding=18)
+        card.pack(fill="x", padx=30, pady=8)
+        head = tk.Frame(card.body, bg=CARD)
+        head.pack(fill="x")
+        section_title(
+            head,
+            "① 账号登录（推荐）",
+            "学号 + 密码 → 统一身份认证 → 体育平台 token；密码只在需要时用 DPAPI 保存。",
+        ).pack(side="left")
+        self.neu_pill = Pill(head, "未登录", "muted")
+        self.neu_pill.pack(side="right")
+
+        form = tk.Frame(card.body, bg=CARD)
+        form.pack(fill="x", pady=(12, 0))
+        form.grid_columnconfigure(1, weight=1)
+        form.grid_columnconfigure(3, weight=1)
+        tk.Label(form, text="学号", bg=CARD, fg=MUTED, font=font("small"), anchor="w").grid(
+            row=0, column=0, sticky="w", padx=(0, 8)
+        )
+        self.neu_user_var = tk.StringVar(value=self.app.service.config.neu_username)
+        self.neu_user_entry = ttk.Entry(form, textvariable=self.neu_user_var)
+        self.neu_user_entry.grid(row=0, column=1, sticky="ew", padx=(0, 18), pady=4)
+
+        tk.Label(form, text="密码", bg=CARD, fg=MUTED, font=font("small"), anchor="w").grid(
+            row=0, column=2, sticky="w", padx=(0, 8)
+        )
+        self.neu_pass_var = tk.StringVar()
+        self.neu_pass_entry = ttk.Entry(form, textvariable=self.neu_pass_var, show="•")
+        self.neu_pass_entry.grid(row=0, column=3, sticky="ew", pady=4)
+        self.neu_pass_entry.bind("<Return>", lambda _event: self._neu_login())
+
+        actions = tk.Frame(card.body, bg=CARD)
+        actions.pack(fill="x", pady=(10, 0))
+        self.neu_remember_var = tk.BooleanVar(value=self.app.service.config.remember_password)
+        self.neu_remember = tk.Checkbutton(
+            actions,
+            text="记住密码（DPAPI 加密）",
+            variable=self.neu_remember_var,
+            bg=CARD,
+            fg=TEXT,
+            activebackground=CARD,
+            activeforeground=TEXT,
+            selectcolor="#FFFFFF",
+            highlightthickness=0,
+            bd=0,
+            font=font("small"),
+            anchor="w",
+        )
+        self.neu_remember.pack(side="left")
+        self.neu_login_btn = ttk.Button(
+            actions,
+            text="登录并读取",
+            style="Accent.TButton",
+            command=self._neu_login,
+        )
+        self.neu_login_btn.pack(side="left", padx=(14, 8))
+        self.neu_logout_btn = ttk.Button(
+            actions,
+            text="退出登录",
+            style="Danger.TButton",
+            command=self._neu_logout,
+            state="disabled",
+        )
+        self.neu_logout_btn.pack(side="left")
+
+        self.neu_status = tk.Label(
+            card.body,
+            text="未登录。密码不会写日志；如需自动刷新可勾选“记住密码”。",
+            bg=CARD,
+            fg=MUTED,
+            font=font("small"),
+            anchor="w",
+            justify="left",
+            wraplength=980,
+        )
+        self.neu_status.pack(anchor="w", pady=(9, 0))
+        tk.Label(
+            card.body,
+            text=(
+                "登录走学校统一身份认证。若提示“二次认证”，需要输入一次短信验证码；"
+                "勾选信任设备后，后续同一设备通常不再要求。"
+            ),
+            bg=CARD,
+            fg=FAINT,
+            font=font("tiny"),
+            anchor="w",
+            justify="left",
+            wraplength=980,
+        ).pack(anchor="w", pady=(3, 0))
+
     def _build_capture(self, parent: tk.Misc) -> None:
         card = Card(parent, padding=18)
         card.pack(fill="x", padx=30, pady=8)
         section_title(
             card.body,
-            "① 粘贴抓包请求",
+            "② 高级：粘贴抓包请求（备用）",
             "抓包工具里对“返回跑步记录/统计”的请求右键 → Copy as cURL；支持 Linux/macOS 和 Windows 两种格式。",
         ).pack(anchor="w")
 
@@ -191,7 +283,7 @@ class ConnectionPage(tk.Frame):
         card.pack(fill="x", padx=30, pady=8)
         section_title(
             card.body,
-            "② 响应预览与自动识别",
+            "③ 响应预览与自动识别",
             "只在本机显示；不会上传。若接口已过期，会返回 401/403 或登录页。",
         ).pack(anchor="w")
 
@@ -233,7 +325,7 @@ class ConnectionPage(tk.Frame):
         card.pack(fill="x", padx=30, pady=8)
         section_title(
             card.body,
-            "③ 字段映射（自动识别后可微调）",
+            "④ 字段映射（自动识别后可微调）",
             "JSON 路径用点号：data.list；字段名写记录内部键名，也支持嵌套路径。",
         ).pack(anchor="w")
 
@@ -344,18 +436,30 @@ class ConnectionPage(tk.Frame):
         service = self.app.service
         if service.is_demo:
             self.mode_pill.set("演示模式", "accent")
+        elif service.has_neu_session:
+            self.mode_pill.set("账号已登录", "success")
         elif service.has_connection:
-            self.mode_pill.set("已连接", "success")
+            self.mode_pill.set("抓包已连接", "success")
         else:
             self.mode_pill.set("未连接", "muted")
 
         self.demo_var.set(service.config.demo_mode)
         self.metric_source.configure(text=service.source_text())
-        if service.connection is None:
-            self.metric_security.configure(text="未配置")
-            self.metric_time.configure(text="—")
-            self.conn_detail.configure(text="当前没有保存任何真实接口。按下面的步骤抓包后粘贴 cURL。")
-        else:
+        if service.has_neu_session:
+            session = service.sports_session
+            assert session is not None
+            self.metric_security.configure(
+                text="DPAPI 加密" if service.neu_session_encrypted else "明文（DPAPI 不可用）"
+            )
+            if service.summary:
+                self.metric_time.configure(text=service.summary.fetched_at.strftime("%Y-%m-%d %H:%M"))
+            else:
+                self.metric_time.configure(text="—")
+            who = session.name or session.uid or "已登录"
+            self.conn_detail.configure(
+                text=f"体育平台：{who}  ·  学号 {session.student_num}  ·  账号密码登录模式"
+            )
+        elif service.connection is not None:
             mapping = service.connection.mapping
             self.metric_security.configure(
                 text="DPAPI 加密" if service.connection_encrypted else "明文（DPAPI 不可用）"
@@ -366,14 +470,117 @@ class ConnectionPage(tk.Frame):
                 self.metric_time.configure(text="—")
             self.conn_detail.configure(
                 text=(
-                    f"接口：{service.connection.request.method} {service.connection.request.host}  ·  "
+                    f"抓包接口：{service.connection.request.method} {service.connection.request.host}  ·  "
                     f"{mapping.describe()}"
                 )
             )
             if self._mapping is None:
                 self._sync_mapping_fields(mapping)
+        else:
+            self.metric_security.configure(text="未配置")
+            self.metric_time.configure(text="—")
+            self.conn_detail.configure(text="当前没有登录。推荐使用上方“账号登录”，抓包 cURL 作为备用方式。")
         self.clear_conn_btn.configure(state="normal" if service.has_connection else "disabled")
         self.save_btn.configure(state="normal" if (self._request and self._payload) else "disabled")
+        self._refresh_neu_status()
+
+    def _refresh_neu_status(self) -> None:
+        service = self.app.service
+        session = service.sports_session
+        if session is not None:
+            who = session.name or session.uid or "已登录"
+            self.neu_pill.set("已登录", "success")
+            self.neu_logout_btn.configure(state="normal")
+            self.neu_login_btn.configure(text="重新登录")
+            detail = f"已登录：{who}  ·  学号 {session.student_num}"
+            if service.has_saved_credentials:
+                detail += "  ·  已保存密码"
+            self.neu_status.configure(text=detail, fg=SUCCESS)
+        else:
+            self.neu_pill.set("未登录", "muted")
+            self.neu_logout_btn.configure(state="disabled")
+            self.neu_login_btn.configure(text="登录并读取")
+            if service.has_saved_credentials:
+                self.neu_status.configure(
+                    text="已保存密码：输入学号后密码可留空，留空将使用本机保存的密码。",
+                    fg=MUTED,
+                )
+            else:
+                self.neu_status.configure(
+                    text="未登录。密码不会写日志；如需自动刷新可勾选“记住密码”。",
+                    fg=MUTED,
+                )
+        if not self.neu_user_var.get() and service.config.neu_username:
+            self.neu_user_var.set(service.config.neu_username)
+        self.neu_remember_var.set(service.config.remember_password and service.has_saved_credentials)
+
+    def _neu_login(self) -> None:
+        service = self.app.service
+        username = self.neu_user_var.get().strip()
+        password = self.neu_pass_var.get()
+        if not username:
+            messagebox.showinfo("请输入学号", "请填写学号后再登录。", parent=self.app)
+            self.neu_user_entry.focus_set()
+            return
+        if not password and not service.has_saved_credentials:
+            messagebox.showinfo("请输入密码", "请填写统一身份认证密码。", parent=self.app)
+            self.neu_pass_entry.focus_set()
+            return
+
+        self._neu_busy(True)
+        self.neu_status.configure(text="正在登录统一身份认证并读取数据…", fg=MUTED)
+        self.app.run_async(
+            lambda: service.login_neu(
+                username,
+                password,
+                bool(self.neu_remember_var.get()),
+                sms_provider=self.app.ask_sms_code,
+            ),
+            self._neu_login_ok,
+            self._neu_login_error,
+        )
+
+    def _neu_login_ok(self, summary) -> None:
+        self._neu_busy(False)
+        self.neu_pass_var.set("")
+        self.app.plan = self.app.service.plan()
+        self.app.refresh_views()
+        self.app.set_status(f"已登录：{summary.completed_km:.1f} km / {summary.completed_runs} 次", "success")
+        messagebox.showinfo(
+            "登录成功",
+            f"已读取校园乐跑：{summary.completed_runs} 次，{summary.completed_km:.1f} km。",
+            parent=self.app,
+        )
+        self.app.show_page("dashboard")
+
+    def _neu_login_error(self, exc: Exception) -> None:
+        self._neu_busy(False)
+        self.neu_status.configure(text=f"登录失败：{exc}", fg=DANGER)
+        self.app.show_error("登录失败", str(exc))
+
+    def _neu_busy(self, busy: bool) -> None:
+        self.neu_login_btn.configure(state="disabled" if busy else "normal")
+        self.neu_user_entry.configure(state="disabled" if busy else "normal")
+        self.neu_pass_entry.configure(state="disabled" if busy else "normal")
+        self.app.set_busy(busy)
+
+    def _neu_logout(self) -> None:
+        if not self.app.service.has_neu_session and not self.app.service.has_saved_credentials:
+            return
+        if not messagebox.askyesno(
+            "退出登录",
+            "会删除本机保存的体育平台 token；如勾选过“记住密码”，也会删除保存的密码。继续？",
+            parent=self.app,
+        ):
+            return
+        self.app.service.clear_neu_login(clear_credentials=True)
+        self.app.service.set_demo_mode(True)
+        self._neu_busy(False)
+        self.neu_pass_var.set("")
+        self.app.plan = self.app.service.plan()
+        self.app.refresh_views()
+        self.app.set_status("已退出账号登录", "accent")
+
 
     def _load_existing_mapping(self) -> None:
         if self.app.service.connection is not None:
@@ -518,9 +725,14 @@ class ConnectionPage(tk.Frame):
 
     def _toggle_demo(self) -> None:
         enabled = bool(self.demo_var.get())
-        if not enabled and not self.app.service.has_connection:
+        if (
+            not enabled
+            and not self.app.service.has_connection
+            and not self.app.service.has_neu_session
+            and not self.app.service.has_saved_credentials
+        ):
             self.demo_var.set(True)
-            messagebox.showinfo("还没有连接", "请先抓包并保存真实接口，再关闭演示数据。", parent=self.app)
+            messagebox.showinfo("还没有登录", "请先账号登录或抓包保存真实接口。", parent=self.app)
             return
         self.app.set_demo_mode(enabled)
         if not enabled:

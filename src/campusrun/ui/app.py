@@ -7,7 +7,7 @@ import os
 import queue
 import threading
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, simpledialog
 from typing import Any, Callable
 
 from .. import __version__
@@ -259,8 +259,13 @@ class CampusRunApp(tk.Tk):
     def set_demo_mode(self, enabled: bool) -> None:
         if enabled == self.service.is_demo:
             return
-        if not enabled and not self.service.has_connection:
-            messagebox.showinfo("还没有连接", "请先抓包并保存真实接口。", parent=self)
+        if (
+            not enabled
+            and not self.service.has_connection
+            and not self.service.has_neu_session
+            and not self.service.has_saved_credentials
+        ):
+            messagebox.showinfo("还没有登录", "请先账号登录或抓包保存接口。", parent=self)
             return
         self.service.set_demo_mode(enabled)
         self.plan = self.service.plan()
@@ -270,14 +275,23 @@ class CampusRunApp(tk.Tk):
     def refresh_data(self) -> None:
         if self._busy:
             return
-        if not self.service.is_demo and not self.service.has_connection:
-            messagebox.showinfo("还没有连接", "请先到“连接设置”粘贴抓包得到的 cURL。", parent=self)
+        if (
+            not self.service.is_demo
+            and not self.service.has_connection
+            and not self.service.has_neu_session
+            and not self.service.has_saved_credentials
+        ):
+            messagebox.showinfo("还没有登录", "请先账号登录，或到“连接设置”粘贴抓包得到的 cURL。", parent=self)
             self.show_page("connection")
             return
         self._busy = True
         self.set_busy(True)
         self.set_status("正在获取数据…", "warn")
-        self.run_async(self.service.refresh, self._on_refresh_ok, self._on_refresh_error)
+        self.run_async(
+            lambda: self.service.refresh(sms_provider=self.ask_sms_code),
+            self._on_refresh_ok,
+            self._on_refresh_error,
+        )
 
     def _on_refresh_ok(self, summary) -> None:
         self._busy = False
@@ -352,10 +366,41 @@ class CampusRunApp(tk.Tk):
         if self._closing:
             return
         if not self.service.is_demo:
-            if self.service.has_connection:
+            if (
+                self.service.has_connection
+                or self.service.has_neu_session
+                or self.service.has_saved_credentials
+            ):
                 self.refresh_data()
             elif self.service.summary is None:
                 self.show_page("connection")
+
+    def ask_sms_code(self, challenge) -> str:
+        """后台登录线程调用；切回 UI 线程弹出验证码输入框。"""
+
+        if threading.current_thread() is threading.main_thread():
+            return simpledialog.askstring(
+                "短信二次认证",
+                f"{getattr(challenge, 'hint', '请输入短信验证码')}\n验证码会发送到学校绑定的手机号。",
+                parent=self,
+            ) or ""
+
+        event = threading.Event()
+        result: dict[str, str] = {}
+
+        def show() -> None:
+            try:
+                result["code"] = simpledialog.askstring(
+                    "短信二次认证",
+                    "请输入短信验证码。\n（勾选“信任设备”后，后续通常不再要求。）",
+                    parent=self,
+                ) or ""
+            finally:
+                event.set()
+
+        self._events.put((lambda _value: show(), None))
+        event.wait(timeout=180)
+        return result.get("code", "")
 
     def _on_mousewheel(self, event: tk.Event) -> str | None:
         widget = self.winfo_containing(event.x_root, event.y_root)

@@ -54,6 +54,14 @@ class AppPaths:
         return self.home / "connection.dat"
 
     @property
+    def sports_session_file(self) -> Path:
+        return self.home / "sports_session.dat"
+
+    @property
+    def credentials_file(self) -> Path:
+        return self.home / "credentials.dat"
+
+    @property
     def cache_file(self) -> Path:
         return self.home / "cache" / "summary.json"
 
@@ -83,6 +91,9 @@ class AppConfig:
     rest_weekdays: list[int] = field(default_factory=list)
     demo_mode: bool = True
     count_mode: str = "best_per_day"
+    auth_mode: str = "curl"
+    remember_password: bool = False
+    neu_username: str = ""
     window_geometry: str = ""
     last_page: str = "dashboard"
 
@@ -107,6 +118,9 @@ class AppConfig:
             "rest_weekdays": sorted(set(self.rest_weekdays)),
             "demo_mode": self.demo_mode,
             "count_mode": self.count_mode,
+            "auth_mode": self.auth_mode,
+            "remember_password": self.remember_password,
+            "neu_username": self.neu_username,
             "window_geometry": self.window_geometry,
             "last_page": self.last_page,
         }
@@ -173,6 +187,9 @@ class AppConfig:
 
         geometry = str(raw.get("window_geometry") or "")
         last_page = str(raw.get("last_page") or "dashboard")
+        auth_mode = str(raw.get("auth_mode") or "curl")
+        if auth_mode not in ("curl", "password"):
+            auth_mode = "curl"
         return cls(
             target_km=target,
             deadline=deadline,
@@ -182,6 +199,9 @@ class AppConfig:
             rest_weekdays=sorted(rest),
             demo_mode=bool(raw.get("demo_mode", True)),
             count_mode=count_mode,
+            auth_mode=auth_mode,
+            remember_password=bool(raw.get("remember_password", False)),
+            neu_username=str(raw.get("neu_username") or ""),
             window_geometry=geometry,
             last_page=last_page,
         )

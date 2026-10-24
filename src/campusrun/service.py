@@ -9,7 +9,7 @@ import csv
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from .analysis import PlanResult, Progress, build_plan
 from .config import (
@@ -21,6 +21,9 @@ from .config import (
 )
 from .errors import CampusRunError, ConfigError, ProviderError
 from .models import CapturedRequest, FieldMapping, HttpConnection, RunSummary
+from .neu.cas import CasLoginClient, SmsChallenge
+from .neu.sports import SportsClient, SportsSession, SportsSessionExpired
+from .neu.store import Credentials, NeuStore
 from .providers import HttpProvider, MockProvider
 from .providers.autodetect import detect, summary_from_payload
 
@@ -54,9 +57,12 @@ class CampusRunService:
         configure_logging(self.paths)
         self.config = AppConfig()
         self.connection: HttpConnection | None = None
+        self.sports_session: SportsSession | None = None
+        self.credentials: Credentials | None = None
         self.summary: RunSummary | None = None
         self.startup_warnings: list[str] = []
         self._connection_store = ConnectionStore(self.paths)
+        self._neu_store = NeuStore(self.paths)
         self._cache = SummaryCache(self.paths)
         self.reload()
 
@@ -79,6 +85,20 @@ class CampusRunService:
                 self.connection = None
         else:
             self.connection = None
+
+        try:
+            self.sports_session = self._neu_store.load_session()
+        except ConfigError as exc:
+            LOG.warning("体育平台会话读取失败：%s", exc)
+            self.startup_warnings.append(str(exc))
+            self.sports_session = None
+
+        try:
+            self.credentials = self._neu_store.load_credentials()
+        except ConfigError as exc:
+            LOG.warning("账号密码读取失败：%s", exc)
+            self.startup_warnings.append(str(exc))
+            self.credentials = None
 
         if self.config.demo_mode:
             self.summary = MockProvider().fetch()
@@ -121,20 +141,125 @@ class CampusRunService:
         return self.recompute()
 
     # ---- 数据获取 -------------------------------------------------
-    def refresh(self) -> RunSummary:
+    def refresh(self, sms_provider: Callable[[SmsChallenge], str] | None = None) -> RunSummary:
         if self.config.demo_mode:
             summary = MockProvider().fetch()
             self.summary = summary
             LOG.info("已刷新演示数据：%.1f km / %d 次", summary.completed_km, summary.completed_runs)
             return summary
+        if self.config.auth_mode == "password" or (
+            self.sports_session is not None and self.connection is None
+        ):
+            return self._refresh_neu(sms_provider)
         if self.connection is None:
-            raise ProviderError("还没有配置真实接口。请到“连接”页粘贴抓包得到的 cURL。")
+            raise ProviderError("还没有配置真实接口。请到“连接”页登录或粘贴 cURL。")
         provider = HttpProvider(self.connection, count_mode=self.config.count_mode)
         summary = provider.fetch()
         self.summary = summary
         self._cache.save(summary)
         LOG.info("已刷新真实数据：%.1f km / %d 次", summary.completed_km, summary.completed_runs)
         return summary
+
+    def _refresh_neu(
+        self, sms_provider: Callable[[SmsChallenge], str] | None
+    ) -> RunSummary:
+        if self.sports_session is None:
+            if self.credentials is None:
+                raise ProviderError("登录态已失效，请到“连接”页重新输入账号密码。")
+            self._login_neu_session(
+                self.credentials.username,
+                self.credentials.password,
+                sms_provider,
+            )
+        assert self.sports_session is not None
+        try:
+            fetch = SportsClient(self.sports_session).fetch()
+        except SportsSessionExpired:
+            if self.credentials is None:
+                raise ProviderError("体育平台登录态已过期，请重新输入账号密码。") from None
+            session = self._login_neu_session(
+                self.credentials.username,
+                self.credentials.password,
+                sms_provider,
+            )
+            fetch = SportsClient(session).fetch()
+        self.summary = fetch.summary
+        self._cache.save(fetch.summary)
+        self._neu_store.save_session(self.sports_session)
+        LOG.info("已刷新校园乐跑：%.1f km / %d 次", fetch.summary.completed_km, fetch.summary.completed_runs)
+        return fetch.summary
+
+    def _login_neu_session(
+        self,
+        username: str,
+        password: str,
+        sms_provider: Callable[[SmsChallenge], str] | None = None,
+    ) -> SportsSession:
+        result = CasLoginClient().login(username, password, sms_provider=sms_provider)
+        self.sports_session = result.session
+        self._neu_store.save_session(result.session)
+        LOG.info("统一身份认证登录成功：uid=%s", result.session.uid)
+        return result.session
+
+    def login_neu(
+        self,
+        username: str,
+        password: str,
+        remember_password: bool = False,
+        sms_provider: Callable[[SmsChallenge], str] | None = None,
+    ) -> RunSummary:
+        username = username.strip()
+        if not username:
+            raise ProviderError("请输入学号。")
+        if not password and self.credentials and self.credentials.username == username:
+            password = self.credentials.password
+        if not password:
+            raise ProviderError("请输入密码。")
+        session = self._login_neu_session(username, password, sms_provider)
+        fetch = SportsClient(session).fetch()
+        self.summary = fetch.summary
+        self._cache.save(fetch.summary)
+        self._neu_store.save_session(self.sports_session or session)
+        self.config.auth_mode = "password"
+        self.config.demo_mode = False
+        self.config.remember_password = bool(remember_password)
+        self.config.neu_username = username
+        self.save_config()
+        if remember_password:
+            self._neu_store.save_credentials(username, password)
+            self.credentials = Credentials(username, password)
+        else:
+            self._neu_store.clear_credentials()
+            self.credentials = None
+        LOG.info("校园乐跑登录成功：%.1f km / %d 次", fetch.summary.completed_km, fetch.summary.completed_runs)
+        return fetch.summary
+
+    def clear_neu_login(self, clear_credentials: bool = True) -> None:
+        self._neu_store.clear_session()
+        if clear_credentials:
+            self._neu_store.clear_credentials()
+            self.credentials = None
+        self.sports_session = None
+        if self.config.auth_mode == "password":
+            self.config.auth_mode = "curl" if self.connection is not None else "password"
+            self.save_config()
+        LOG.info("已清除体育平台登录态")
+
+    @property
+    def has_neu_session(self) -> bool:
+        return self.sports_session is not None
+
+    @property
+    def has_saved_credentials(self) -> bool:
+        return self.credentials is not None
+
+    @property
+    def neu_session_encrypted(self) -> bool:
+        return self._neu_store.session_encrypted()
+
+    @property
+    def credentials_encrypted(self) -> bool:
+        return self._neu_store.credentials_encrypted()
 
     @property
     def is_demo(self) -> bool:
@@ -161,6 +286,7 @@ class CampusRunService:
         secure = self._connection_store.save(connection)
         self.connection = connection
         self.config.demo_mode = False
+        self.config.auth_mode = "curl"
         self.save_config()
         LOG.info("已保存连接：%s（%s）", request.host, "DPAPI 加密" if secure else "明文")
         return secure

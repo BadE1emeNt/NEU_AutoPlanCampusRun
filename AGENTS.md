@@ -6,13 +6,13 @@
 
 Windows 桌面工具 + 纯 Python 核心库：
 
-- 从东北大学“校园乐跑”小程序读取**只读**跑步统计（当前为抓包 cURL 复用登录态；
-  账号密码自动登录方案见 `docs/LOGIN-NOTES.md`，等待登录协议）；
+- 从东北大学“校园乐跑”（体育平台 H5）读取**只读**跑步统计；
+  支持“本机学号/密码 → CAS → 体育平台 token”的账号登录，也保留抓包 cURL 备用；
 - 按目标 km / 截止日期 / 休息日，计算每日摊平里程、2/3/4/5 km 完成天数、逐日计划；
 - Tkinter GUI（演示模式开箱可用）+ CLI；
-- 凭据用 Windows DPAPI 加密；不实现登录签名、不提交跑步。
+- 密码/会话/抓包凭据用 Windows DPAPI 加密；不提交跑步、不伪造轨迹。
 
-**约束**：只读、不伪造轨迹、不自动刷里程；不常驻后台；不猜测登录协议。
+**约束**：只读；不常驻后台；不绕过验证码；登录协议以抓包/官方页面为准。
 
 ## 2. 环境
 
@@ -44,39 +44,45 @@ src/campusrun/
   service.py       配置 + 数据源 + 缓存 + 规划的应用服务
   config.py        AppPaths / AppConfig / ConnectionStore(DPAPI) / SummaryCache
   secrets.py       CryptProtectData / CryptUnprotectData
+  neu/             CAS 登录、AES/RSA、体育平台 API、DPAPI 会话/密码存储
   curlparse.py     cURL、Windows ^ 续行、原始 HTTP 请求
   jsonpath.py      data.list[0] 之类路径
   providers/       MockProvider / HttpProvider / autodetect
   cli.py           plan / fetch / import-curl / config / doctor / gui
   ui/              theme, widgets, app, dashboard, records, connection, help, plan_dialog
-tests/             66 个测试（analysis/curl/autodetect/config/DPAPI/http/GUI e2e）
+tests/             74 个测试（analysis/curl/autodetect/config/DPAPI/http/neu/CAS/GUI e2e）
 tools/             ui_smoke.py, e2e_gui.py, e2e_cli.py, ui_preview.py, ui_plan_preview.py, screenshot.ps1
 docs/              CAPTURE.md, API-NOTES.md, LOGIN-NOTES.md, 截图
 ```
 
 数据目录：`%APPDATA%\CampusRun`（或 `CAMPUSRUN_HOME`）：
-`config.json`、`connection.dat`（DPAPI）、`cache/summary.json`、`logs/app.log`、`exports/`。
+`config.json`、`connection.dat`、`sports_session.dat`、`credentials.dat`、
+`cache/summary.json`、`logs/app.log`、`exports/`。
 
-## 4. 当前状态（2026-10-24）
+## 4. 当前状态（2026-10-24 晚）
 
-- 核心算法、配置、DPAPI、cURL 解析、自动识别、HTTP Provider、CLI、四个 GUI 页面、计划弹窗均已完成。
-- 66 个测试通过（含本地 HTTP 服务器与 GUI 端到端：
-  粘贴 cURL → 抓取 → 自动识别 → DPAPI 保存 → 重启 → 刷新）。
-- 演示数据固定 38.4 km / 12 次；规划结果已与手算核对。
-- **方向调整（2026-10-24 晚）**：用户要的是“本机输入账号密码 → 自动登录 → 拉数据”，
-  不是 cURL 复用。登录协议尚未拿到，见 `docs/LOGIN-NOTES.md`。
-  已确认 App 为「智慧东大」3.1.8（`com.sunyt.testdemo`），学校 SSO 已启用短信二次认证；
-  纯密码能否自动登录取决于 App 自身登录实现，不能靠猜。
-- **真实东北大学接口尚未抓包**。`docs/API-NOTES.md` 是待填模板。
-  下一步需要用户提供：APK（推荐，静态分析登录）或一次登录抓包（密码不要发聊天）。
-  拿到后实现 `login/` + `credentials.py` + 会话刷新，并补 fixture 测试。
+- 核心算法、配置、DPAPI、cURL、自动识别、CLI、GUI 均完成；74 个测试通过。
+- **账号登录已实现**：
+  - CAS 登录页解析 `lt/execution` + RSA(PKCS#1 v1.5) 加密 `学号+密码`；
+  - 支持短信二次认证（`phone(...)` 挑战 → `tpass/device` 发送/校验，勾选信任设备）；
+  - H5 `neuLogin?ticket=...` → 从最终跳转 URL 取 token/uid/学号；
+  - 体育平台 API：AES-128-CBC、MD5 签名、token 调用；
+  - `sports_session.dat` / `credentials.dat` DPAPI；token 过期可自动重登。
+- **真实账号密码登录尚未由用户实测**（2026-10-24 仅用用户提供的 HAR
+  验证了 token/API 与 CAS 页面解析；CAS 密码 POST 用本地 mock 验证）。
+- 用户数据（2026-10-24，体育平台 2026~2027 上学期）：5 次 / 17.38 km；
+  接口字段见 `docs/API-NOTES.md`。
+- 下一步：用户运行 `campusrun.cmd login --remember` 或 GUI 登录，报告是否需要短信/错误码；
+  若真实 CAS 表单与 mock 有差异，按错误页面微调。
 
 ## 5. 设计决策
 
-- **登录**：不猜测接口，不逆向签名算法；优先分析 APK 或一次登录抓包，再实现
-  `login/` + `credentials.py` + 会话刷新。若学校短信二次认证不可绕过，则做“首次密码+短信、
-  记住设备/会话，之后自动刷新”的半自动方案，并如实说明。
-- 只读数据层：自动识别 + 手工 JSON 路径；接口未知时仍可用；识别结果必须显示“N 次 / X km”供用户核对。
+- **登录**：账号密码走 CAS（不逆向 App Flutter 层）；CAS 表单/公钥从官方页面动态读取。
+  短信二次认证用回调；勾选 `saveDevice` 信任设备。失败/验证码不支持时回退 cURL。
+- **体育平台 API**：AES-128-CBC key/iv + MD5(排序 key+value + salt)；
+  token 单独即可调用（实测无需 Cookie），但请求仍带浏览器 UA/Origin/Referer。
+- **存储**：账号密码、体育平台 token、cURL 各自 DPAPI 文件；密码不写日志。
+- 只读数据层：自动识别 + 手工 JSON 路径；识别结果必须显示“N 次 / X km”供用户核对。
 - 规则可配置：单次 2–5 km、每天 1 次、目标与截止日、每周休息日。
 - 每天去重取最远一次，避免接口返回多次尝试时高估里程；`count_mode=sum` 可切换。
 - DPAPI 降级：非 Windows 或 DPAPI 失败时明文保存并明确警告；目标平台 Windows 下应加密。
@@ -102,9 +108,9 @@ docs/              CAPTURE.md, API-NOTES.md, LOGIN-NOTES.md, 截图
 
 ## 8. 待办
 
-- [ ] 等用户提供 APK 或登录抓包，填 `docs/LOGIN-NOTES.md` 并实现账号登录；
-- [ ] 拿到登录/数据接口后填 `docs/API-NOTES.md`；
-- [ ] 视字段稳定性增加 NEU 默认 profile 与 fixture；
+- [ ] 用户用真实账号跑一次 `campusrun.cmd login --remember`，确认 CAS 密码/短信流程；
+- [ ] 根据真实错误页微调 CAS 错误/短信解析；
+- [ ] 学期目标/截止日从 `Run2/beforeRunV260` 自动读取（可选）；
 - [ ] 与小程序页面数字对照验证；
 - [ ] 可选：PyInstaller 打包（需先确认不引入常驻进程）；
 - [ ] 可选：计划导出日历/提醒。
