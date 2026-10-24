@@ -83,7 +83,7 @@ docs/              CAPTURE.md, API-NOTES.md, LOGIN-NOTES.md, PACKAGING.md, 截�
 - 发布方式：源码 + `.cmd`，以及 PyInstaller one-folder EXE
   （`dist/CampusRun/CampusRun.exe`、`dist/CampusRun-0.1.0-win64.zip`）。
 - 打包：`build_exe.cmd` / `tools/build_exe.ps1` / `packaging/launcher.py`；
-  PyInstaller 6.22.3；one-folder；开发机启动验证，待无 Python VM 回归。
+  PyInstaller 6.22.3；one-folder；开发机 + 另一台电脑启动验证通过，待无 Python VM 回归。
 
 ## 5. 设计决策
 

@@ -18,7 +18,8 @@
   第二个账号被 CAS `tp_tpass/h5?act=tpass/guide` 首次登录引导页拦截。该页面实际是
   **首次绑定邮箱**，可点“稍后绑定”跳过；程序会先尝试带会话重新进入 CAS 登录入口，
   仍被拦截时提示并打开浏览器，完成一次后重试。
-- 发布方式：源码 + `.cmd`，以及 PyInstaller **one-folder EXE**（`dist/CampusRun/CampusRun.exe`）。
+- 发布方式：源码 + `.cmd`，以及 PyInstaller **one-folder EXE**（`dist/CampusRun/CampusRun.exe`）；
+  已在开发机和另一台电脑启动通过。
 
 ## 2. 技术栈与约束
 
@@ -332,7 +333,7 @@ Android APK（Tkinter 不能直接转 APK，需要重写 UI）的路线、约束
 - 图形验证码/滑块/扫码不支持，需抓包备用。
 - 学期目标/截止日仍手动设置；`Run2/beforeRunV260` 可提供学期起止/规则，尚未接入。
 - 无 PyInstaller 单文件包；当前为 one-folder，`_internal` 必须一起分发。
-- EXE 已在开发机启动验证；尚未在无 Python 的干净 Windows VM 上回归。
+- EXE 已在开发机和另一台电脑启动验证；尚未在无 Python 的干净 Windows VM 上单独回归。
 - 真实 CAS 密码流程只验证了一个账号；短信二次认证未真实触发验证。
 - 自动刷新只在启动/手动点击时发生，没有后台定时器。
 
