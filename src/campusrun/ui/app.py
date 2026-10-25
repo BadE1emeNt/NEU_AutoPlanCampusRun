@@ -452,6 +452,11 @@ class CampusRunApp(tk.Tk):
 
 
 def run_app(paths: AppPaths) -> int:
+    from ..elevation import ensure_elevated
+
+    if not ensure_elevated():
+        # 已成功拉起提权后的新进程，或用户取消了 UAC。
+        return 0
     enable_dpi_awareness()
     try:
         service = CampusRunService(paths)

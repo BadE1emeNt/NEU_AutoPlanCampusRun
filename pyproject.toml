@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "campusrun"
-version = "0.1.0"
+version = "0.1.1"
 description = "东北大学校园乐跑：进度读取、配速规划与 Windows 桌面面板"
 readme = "README.md"
 requires-python = ">=3.10"

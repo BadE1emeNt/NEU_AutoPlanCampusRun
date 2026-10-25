@@ -6,12 +6,12 @@
 > **AI 生成声明**：代码与文档主要由 AI 编程助手生成或辅助生成，仅供学习/技术练习；
 > 非学校官方；MIT License，详见 [LICENSE](LICENSE) 与 [DISCLAIMER.md](DISCLAIMER.md)。
 >
-> 版本 0.1.0 · 2026-10-24 · Windows + Python 标准库 + Tkinter。
+> 版本 0.1.1（测试版） · 2026-10-25 · Windows + Python 标准库 + Tkinter。
 
 ## 1. 项目状态
 
 - 账号密码登录、CAS/RSA、短信二次认证、体育平台 AES/签名 API、DPAPI 存储、GUI/CLI、规划算法均已实现。
-- **78 个测试全部通过**（含本地 mock CAS、体育平台加密接口、DPAPI、GUI 冒烟）。
+- **80 个测试全部通过**（含本地 mock CAS、体育平台加密接口、DPAPI、GUI 冒烟）。
 - 真实数据处理已验证：用用户 HAR 中的 token 调用体育平台 API 成功；用 CASTGC 重新走
   `neuLogin` 能拿到新 token。
 - **真实 CAS 密码 POST** 已用本地 mock 验证；第一个真实账号已成功登录，
@@ -19,6 +19,7 @@
   **首次绑定邮箱**，可点“稍后绑定”跳过；程序会先尝试带会话重新进入 CAS 登录入口，
   仍被拦截时提示并打开浏览器，完成一次后重试。
 - 发布方式：源码 + `.cmd`，以及 PyInstaller **one-folder EXE**（`dist/CampusRun/CampusRun.exe`）；
+  0.1.1 起 GUI 启动时自动请求 UAC（`elevation.ensure_elevated`），缓存/会话写失败为非致命。
   已在开发机和另一台电脑启动通过。
 
 ## 2. 技术栈与约束
@@ -299,7 +300,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_exe.ps1
 产物：
 
 - `dist/CampusRun/CampusRun.exe` + `_internal/`（约 26 MB）；
-- `dist/CampusRun-0.1.0-win64.zip`（含 README/CAPTURE/截图）；
+- `dist/CampusRun-0.1.1-win64.zip`（含 README/CAPTURE/截图）；
 - 构建脚本末尾输出 zip 的 SHA256。
 
 构建依赖只有 `pyinstaller==6.22.3`，见 `packaging/requirements-build.txt`。

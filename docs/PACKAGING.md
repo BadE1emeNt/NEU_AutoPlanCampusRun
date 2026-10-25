@@ -1,7 +1,7 @@
 # 发布与打包规划
 
-> 当前 0.1.0 已用 PyInstaller 6.22.3 构建 **one-folder EXE**：
-> `dist/CampusRun/CampusRun.exe`，并压缩为 `dist/CampusRun-0.1.0-win64.zip`。
+> 当前 0.1.1 已用 PyInstaller 6.22.3 构建 **one-folder EXE**：
+> `dist/CampusRun/CampusRun.exe`，并压缩为 `dist/CampusRun-0.1.1-win64.zip`。
 > 目标：Windows 最终提供可双击的 EXE；后续再移植 Android APK。
 > 本文记录可行路线、约束和发布检查项，避免把“Python 脚本”直接误当成可移植 App。
 
@@ -24,7 +24,7 @@
 - DPAPI、`%APPDATA%\CampusRun`、网络请求在 EXE 下保持原行为；
 - 不打包 `research/`、`tests/`、抓包/令牌；
 - 产物：`dist/CampusRun/CampusRun.exe` + `_internal/`；zip 为
-  `dist/CampusRun-0.1.0-win64.zip`（含 README/LICENSE/DISCLAIMER/CAPTURE/截图）。
+  `dist/CampusRun-0.1.1-win64.zip`（含 README/LICENSE/DISCLAIMER/CAPTURE/截图）。
 
 ### EXE 验收
 
@@ -88,7 +88,7 @@
 ## 3. 发布检查清单
 
 - [ ] 版本号统一：`campusrun.__version__`、README、EXE/APK version；
-- [ ] 78 个测试通过 + GUI 冒烟；
+- [ ] 80 个测试通过 + GUI 冒烟；
 - [ ] 真实账号登录回归（含首次绑定邮箱跳过）；
 - [ ] 不含 `research/`、HAR、token、密码、个人数据；
 - [ ] README（发行版）与 README.dev.md 链接正确；

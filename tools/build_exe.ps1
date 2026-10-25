@@ -58,7 +58,7 @@ foreach ($name in @("CAPTURE.md", "API-NOTES.md", "LOGIN-NOTES.md", "PACKAGING.m
     }
 }
 
-$zip = Join-Path $root "dist\CampusRun-0.1.0-win64.zip"
+$zip = Join-Path $root "dist\CampusRun-0.1.1-win64.zip"
 if (Test-Path $zip) { Remove-Item $zip -Force }
 Compress-Archive -Path $release -DestinationPath $zip
 Get-FileHash $zip -Algorithm SHA256 | Format-List

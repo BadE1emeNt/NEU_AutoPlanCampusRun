@@ -51,7 +51,7 @@ src/campusrun/
   providers/       MockProvider / HttpProvider / autodetect
   cli.py           plan / fetch / import-curl / config / doctor / gui
   ui/              theme, widgets, app, onboarding, dashboard, records, connection, help, plan_dialog
-tests/             78 个测试（analysis/curl/autodetect/config/DPAPI/http/neu/CAS/GUI e2e）
+tests/             80 个测试（analysis/curl/autodetect/config/DPAPI/http/neu/CAS/GUI e2e）
 tools/             ui_smoke.py, e2e_gui.py, e2e_cli.py, ui_preview.py, ui_plan_preview.py, screenshot.ps1
 docs/              CAPTURE.md, API-NOTES.md, LOGIN-NOTES.md, PACKAGING.md, 截图
 ```
@@ -62,7 +62,8 @@ docs/              CAPTURE.md, API-NOTES.md, LOGIN-NOTES.md, PACKAGING.md, 截�
 
 ## 4. 当前状态（2026-10-24 晚）
 
-- 核心算法、配置、DPAPI、cURL、自动识别、CLI、GUI 均完成；78 个测试通过。
+- 核心算法、配置、DPAPI、cURL、自动识别、CLI、GUI 均完成；80 个测试通过。
+- 0.1.1：GUI 启动自动 UAC 提权；缓存/会话写入失败改为非致命（不再弹“刷新失败”）。
 - **账号登录已实现**：
   - CAS 登录页解析 `lt/execution` + RSA(PKCS#1 v1.5) 加密 `学号+密码`；
   - 支持短信二次认证（`phone(...)` 挑战 → `tpass/device` 发送/校验，勾选信任设备）；
@@ -81,7 +82,7 @@ docs/              CAPTURE.md, API-NOTES.md, LOGIN-NOTES.md, PACKAGING.md, 截�
 - 交互约定：抓包备用方式默认隐藏；账号登录连续失败 2 次自动显示并提示抓包教程；
   登录成功/退出后恢复隐藏（已有 cURL 连接时保持显示）。
 - 发布方式：源码 + `.cmd`，以及 PyInstaller one-folder EXE
-  （`dist/CampusRun/CampusRun.exe`、`dist/CampusRun-0.1.0-win64.zip`）。
+  （`dist/CampusRun/CampusRun.exe`、`dist/CampusRun-0.1.1-win64.zip`）。
 - 打包：`build_exe.cmd` / `tools/build_exe.ps1` / `packaging/launcher.py`；
   PyInstaller 6.22.3；one-folder；开发机 + 另一台电脑启动验证通过，待无 Python VM 回归。
 
@@ -118,7 +119,7 @@ docs/              CAPTURE.md, API-NOTES.md, LOGIN-NOTES.md, PACKAGING.md, 截�
 
 ## 8. 待办
 
-- [x] PyInstaller one-folder 打包（`build_exe.cmd`，产物 `dist/CampusRun-0.1.0-win64.zip`）；
+- [x] PyInstaller one-folder 打包（`build_exe.cmd`，产物 `dist/CampusRun-0.1.1-win64.zip`）；
 - [ ] APK 移植（先选 Kivy/Flutter/Kotlin 路线，Tkinter 不直接支持 Android）；
 - [ ] 学期目标/截止日从 `Run2/beforeRunV260` 自动读取（可选）；
 - [ ] 与小程序页面数字对照验证；

@@ -62,6 +62,7 @@ class CampusRunService:
         self.summary: RunSummary | None = None
         self.startup_warnings: list[str] = []
         self.last_cache_error: str | None = None
+        self.last_session_error: str | None = None
         self._connection_store = ConnectionStore(self.paths)
         self._neu_store = NeuStore(self.paths)
         self._cache = SummaryCache(self.paths)
@@ -120,6 +121,18 @@ class CampusRunService:
         except OSError as exc:
             self.last_cache_error = str(exc)
             LOG.warning("摘要缓存写入失败（本次数据仍然可用）：%s", exc)
+
+    def _save_session(self) -> None:
+        """会话文件写入失败也不应该让已成功读取的数据消失。"""
+
+        if self.sports_session is None:
+            return
+        try:
+            self._neu_store.save_session(self.sports_session)
+            self.last_session_error = None
+        except OSError as exc:
+            self.last_session_error = str(exc)
+            LOG.warning("体育平台会话写入失败（本次数据仍然可用）：%s", exc)
 
     def update_config(self, **changes: Any) -> None:
         for key, value in changes.items():
@@ -196,7 +209,7 @@ class CampusRunService:
             fetch = SportsClient(session).fetch()
         self.summary = fetch.summary
         self._save_cache(fetch.summary)
-        self._neu_store.save_session(self.sports_session)
+        self._save_session()
         LOG.info("已刷新校园乐跑：%.1f km / %d 次", fetch.summary.completed_km, fetch.summary.completed_runs)
         return fetch.summary
 
@@ -208,7 +221,7 @@ class CampusRunService:
     ) -> SportsSession:
         result = CasLoginClient().login(username, password, sms_provider=sms_provider)
         self.sports_session = result.session
-        self._neu_store.save_session(result.session)
+        self._save_session()
         LOG.info("统一身份认证登录成功：uid=%s", result.session.uid)
         return result.session
 
@@ -230,15 +243,20 @@ class CampusRunService:
         fetch = SportsClient(session).fetch()
         self.summary = fetch.summary
         self._save_cache(fetch.summary)
-        self._neu_store.save_session(self.sports_session or session)
+        self.sports_session = self.sports_session or session
+        self._save_session()
         self.config.auth_mode = "password"
         self.config.demo_mode = False
         self.config.remember_password = bool(remember_password)
         self.config.neu_username = username
         self.save_config()
         if remember_password:
-            self._neu_store.save_credentials(username, password)
-            self.credentials = Credentials(username, password)
+            try:
+                self._neu_store.save_credentials(username, password)
+                self.credentials = Credentials(username, password)
+            except OSError as exc:
+                self.last_session_error = str(exc)
+                LOG.warning("密码保存失败（本次登录仍然有效）：%s", exc)
         else:
             self._neu_store.clear_credentials()
             self.credentials = None
