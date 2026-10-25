@@ -134,9 +134,10 @@ def main(argv: list[str] | None = None) -> int:
 
     paths = AppPaths(args.home.resolve()) if args.home else AppPaths.default()
     try:
-        paths.ensure()
+        # GUI 先提权，再创建数据目录，避免从受限令牌启动时在 paths.ensure() 就失败。
         if args.command == "gui":
             return _run_gui(paths)
+        paths.ensure()
         service = CampusRunService(paths)
         if args.command == "plan":
             return _cmd_plan(service, args)
